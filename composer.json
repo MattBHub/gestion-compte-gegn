@@ -16,6 +16,7 @@
     "require": {
         "php": ">=7.1",
         "ext-json": "*",
+        "ext-pdo": "*",
         "codeitnowin/barcode": "^3.0",
         "components/jquery": "^3.2",
         "doctrine/doctrine-bundle": "^1.6",

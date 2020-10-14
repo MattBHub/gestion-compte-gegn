@@ -75,10 +75,10 @@
                             {% endif %}
                         </ul>
                         {% if proxy_given is null and proxy_received is null %}
-                            <a href="{{ path("event_proxy_give",{'id':event.id}) }}" class="waves-effect waves-light btn purple hide-on-small-only">Je ne peux pas venir, je fais une procuration</a>
-                            <a href="{{ path("event_proxy_give",{'id':event.id}) }}" class="waves-effect waves-light purple-text hide-on-med-and-up">Je ne peux pas venir, je fais une procuration</a>
-                            <a href="{{ path("event_proxy_take",{'id':event.id}) }}" class="waves-effect waves-light btn green hide-on-small-only">Je viens, j'accepte une procuration</a>
-                            <a href="{{ path("event_proxy_take",{'id':event.id}) }}" class="waves-effect waves-light green-text hide-on-med-and-up">Je viens, j'accepte une procuration</a>
+                            <a href="{{ path("event_proxy_give",{'id':event.id}) }}" class="waves-effect waves-light btn purple hide-on-small-only">Je fais une procuration</a>
+                            <a href="{{ path("event_proxy_give",{'id':event.id}) }}" class="waves-effect waves-light purple-text hide-on-med-and-up">Je fais une procuration</a>
+                            <a href="{{ path("event_proxy_take",{'id':event.id}) }}" class="waves-effect waves-light btn green hide-on-small-only">J'accepte une procuration</a>
+                            <a href="{{ path("event_proxy_take",{'id':event.id}) }}" class="waves-effect waves-light green-text hide-on-med-and-up">J'accepte une procuration</a>
                         {% endif %}
                     {% endif %}
                 {% endif %}

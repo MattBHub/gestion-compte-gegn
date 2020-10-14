@@ -1,13 +1,20 @@
 {% if codes | length == 0%}
-    Auncun code en cours... peut-être 0000 ?
+    Auncun code en cours... c'est gênant ?
 {% else %}
     {% if codes | length == 1%}
         <h4 class="">Code en cours de validité</h4>
         <div class="row">
             <div class="col s12">
                 <div class="card-panel">
-                    <h5><i class="material-icons left">vpn_key</i>{{ codes|first.value }}</h5>
-                    entré à {{ codes|first.createdAt | date('H:m:i') }} le {{ codes|first.createdAt | date_fr_long }} par {{ codes|first.getRegistrar }}
+                    <h5>{{ codes|first.value }} <i class="material-icons" style="vertical-align: middle">lock_open</i></h5>
+                    <div style="font-weight:600">
+                    La boîte à clé se trouve derrière la boîte à lettres.<br>
+                    Quand tu es devant, approche ta main pour la 'réveiller'. Puis tape le code et fini par le petit verrou ouvert au centre de la boîte.<br>
+                    Elle va clignoter en vert et tu pourra alors l’ouvrir en basculant la façade vers le bas.<br>
+                    Bon créneau !
+                    </div>
+   {#                entré à {{ codes|first.createdAt | date('H:m:i') }} le {{ codes|first.createdAt | date_fr_long }} par {{ codes|first.getRegistrar }}    {#                entré à {{ codes|first.createdAt | date('H:m:i') }} le {{ codes|first.createdAt | date_fr_long }} par {{ codes|first.getRegistrar }} #}
+
                 </div>
             </div>
         </div>

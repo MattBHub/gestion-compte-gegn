@@ -19,9 +19,7 @@
                     Bonjour {% if app.user.beneficiary %}{{ app.user.beneficiary.firstname }}<br>#{{ app.user.beneficiary.membership.memberNumber }}{% else %}{{ app.user.username }}{% endif %}</h3>
                 {% if is_granted("ROLE_SUPER_ADMIN") %}
                     <p class="col s12">
-                        <span class="orange-text">&lt;warning&gt;</span>
-                        <span>With great power comes great responsibility</span>
-                        <span class="orange-text">&lt;/warning&gt;</span>
+                        <span class="orange-text "><b>-With great power comes great responsibility-</b></span>
                     </p>
                 {% endif %}
                 {% if app.user.beneficiary %}
@@ -72,19 +70,25 @@
                                         <div>
                                             {% include "member/_partial/swipe_card.html.twig" with { member: app.user.beneficiary.membership, showBadgeImage: false } %}
                                         </div>
-                                        <a href="{{ path("fos_user_profile_show") }}" class="waves-effect waves-light blue-grey btn">
-                                            <i class="material-icons left">settings</i>
-                                            Gérer mon compte
-                                        </a>
-                                        {% include "member/_partial/frozen.html.twig" with { member: app.user.beneficiary.membership  } %}
+                                        <div>
+                                            <a href="{{ path("fos_user_profile_show") }}" class="waves-effect waves-light blue-grey btn">
+                                                <i class="material-icons left">settings</i>
+                                                Gérer mon compte
+                                            </a>
+                                        </div>
+                                        <div>
+                                            {% include "member/_partial/frozen.html.twig" with { member: app.user.beneficiary.membership  } %}
+                                        </div>
                                     </div>
                                 {% endif %}
                             </div>
                         </div>
                         <div class="homebox">
-                            <h5><span class="white">En ce moment à {{ project_name }}</span></h5>
-                            <a href="{{ path("tasks_list") }}" class="waves-effect waves-light btn teal darken-1"><i class="material-icons left">list</i>Taches en cours</a><br><br>
-                            <a href="{{ path("process_update_list") }}" class="btn teal darken-1" id="news_home_button" style="position: relative">
+                            <h5><span class="white">En ce moment</span></h5>
+                            {{ render(controller("AppBundle:Code:homepageDashboard")) }}
+                            <a href="{{ path("schedule") }}" class="waves-effect waves-light btn teal darken-1" style="min-width: 240px"><i class="material-icons left">schedule</i>Planning</a><br><br>
+                            <a href="{{ path("tasks_list") }}" class="waves-effect waves-light btn blue-grey" style="min-width: 240px"><i class="material-icons left">list</i>Taches en cours</a><br>
+                            <a href="{{ path("process_update_list") }}" class="btn blue-grey" id="news_home_button" style="min-width: 240px">
                                 <i class="material-icons left" >info</i>Les nouveautés
                                 <span class="bubble_counter red white-text" style="display:none;">{{ app.user.beneficiary | last_shift_date | count_updates_list_from_date}}</span>
                             </a>
@@ -125,28 +129,9 @@
                         <div class="homebox">
                             <h5><span class="white"><i class="material-icons">build</i>&nbsp;Action !</span></h5>
 
-                            {% if (is_granted("view",codes | first) or is_granted("create",codes | first)) %}
-                                <a href="#modal_code" class="waves-effect waves-light btn deep-purple lighten-1 modal-trigger"><i class="material-icons left">vpn_key</i>Boîtier à clefs</a>
-                                <div id="modal_code" class="modal">
-                                    <div class="modal-content">
-                                        <h4>Boîtier à clefs</h4>
-                                        <div>
-                                            {% if is_granted("view",codes | first) %}
-                                                <a href="{{ path("codes_list") }}" class="waves-effect waves-light btn deep-purple lighten-1"><i class="material-icons left">vpn_key</i>Voir
-                                                    code{% if codes | length > 1 %}s{% endif %} boîtier à clefs</a>
-                                            {% endif %}
-                                            {% if is_granted("create",codes | first) %}
-                                                <a href="{{ path("code_new") }}" class="waves-effect waves-light btn deep-purple darken-1"><i class="material-icons left">vpn_key</i>Déposer
-                                                    les clefs</a>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endif %}
-
                             {% if is_granted("access_tools",app.user) %}
                                 <a href="{{ path("user_office_tools") }}" class="waves-effect waves-light btn teal">
-                                    <i class="material-icons left">folder_shared</i>adhésion / ré-adhésion</a>
+                                    <i class="material-icons left">folder_shared</i>Notes collectives</a>
                                 <br>
                             {% endif %}
 

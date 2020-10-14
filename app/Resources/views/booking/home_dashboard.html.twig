@@ -3,7 +3,8 @@
     {% set member = beneficiary.membership %}
     {% set beneficiariesWhoCanBook = shift_service.beneficiariesWhoCanBook(member) %}
     {% set due_duration_hour = due_duration_by_cycle / 60 %}
-    {% if not member.frozen %}
+    {% if not member.frozen  %}
+        {% if display_gauge %}
         <div class="gauge_container">
             <canvas id="gauge"
                     data-type="radial-gauge"
@@ -15,15 +16,17 @@
                     data-ticks-angle="180"
                     data-value-box="false"
                     data-value="{{ member.timeCount / 60 }}"
-                    data-max-value="{{ ((member.beneficiaries | length) * due_duration_by_cycle) / 60 }}"
-                    data-major-ticks="{{ due_duration_hour * -3 }}h,{{ due_duration_hour * -2 }}h,{{ due_duration_hour * -1}}h,0,{{ due_duration_hour }}h{% if (member.beneficiaries | length) > 1 %},{{ due_duration_hour *2 }}h{% endif %}"
+                    data-max-value="{{ due_duration_hour * 3}}"
+                    data-major-ticks="{{ due_duration_hour * -3 }}h,{{ due_duration_hour * -2 }}h,{{ due_duration_hour * -1}}h,0,{{ due_duration_hour }}h,{{ due_duration_hour *2 }}h,{{ due_duration_hour *3 }}h"
                     data-minor-ticks="2"
                     data-stroke-ticks="true"
                     data-highlights='[
         {"from": {{ due_duration_hour * -3 }}, "to": {{ due_duration_hour * -2 }}, "color": "rgba(200, 50, 50, .95)"},
         {"from": {{ due_duration_hour * -2 }}, "to": {{ due_duration_hour * -1 }}, "color": "rgba(200, 50, 50, .75)"},
         {"from": {{ due_duration_hour * -1 }}, "to": 0, "color": "yellow"},
-        {"from": 0, "to": {{ due_duration_hour }}, "color": "#8bc34a55"}{% if (member.beneficiaries | length) > 1 %},{"from": {{ due_duration_hour }}, "to": {{ due_duration_hour * 2 }}, "color": "#8bc34a"}{% endif %}
+        {"from": 0, "to": {{ due_duration_hour }},  "color": "yellow"},
+        {"from": {{ due_duration_hour }}, "to": {{ due_duration_hour * 2 }}, "color": "#8bc34a55"},
+        {"from": {{ due_duration_hour * 2}}, "to": {{ due_duration_hour * 3 }}, "color": "#8bc34a"}
     ]'
                     data-color-plate="#fff"
                     data-border-shadow-width="0"
@@ -37,6 +40,7 @@
                     data-animation-rule="linear"
             ></canvas>
         </div>
+        {% endif %}
         {% if  member.timeCount < 0 %}
             <p><i class="material-icons">warning</i> Tu as du retard sur ton bénévolat. Pense à réserver tes créneaux.
             </p>

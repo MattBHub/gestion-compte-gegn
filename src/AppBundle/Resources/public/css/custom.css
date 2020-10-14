@@ -87,7 +87,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: 'Raleway', sans-serif;
+//   font-family: 'Raleway', sans-serif;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -99,7 +99,7 @@ h4.header {
   font-weight: normal;
 }
 html {
-  font-family: 'Raleway', sans-serif;
+//   font-family: 'Raleway', sans-serif;
 }
 body {
   display: flex;

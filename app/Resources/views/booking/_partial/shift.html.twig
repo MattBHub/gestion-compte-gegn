@@ -27,9 +27,10 @@
                     {% if bucket.end|date('i') == '00' %}{{ bucket.end|date('G\\h') }}{% else %}{{ bucket.end|date('G\\hi') }}{% endif %}
                 </span>
                 <span class="hide-on-small-and-down">{{ bucket.start|date('G\\hi') }} - {{ bucket.end|date('G\\hi') }}</span><br>
-                {% if (nbShifter == 0) %}
+                {% set perOccupation = bucket.getOccupationWithFormation %}
+                {% if perOccupation < 0.5 %}
                     <span class="red-text"><i class="material-icons tiny">warning</i><span class="hide-on-small-and-down">&nbsp;sous-effectif</span></span>
-                {% elseif (nbShifter < nbShifts/2) %}
+                {% elseif perOccupation < 1 %}
                     <span class="orange-text"><i class="material-icons tiny">warning</i><span class="hide-on-small-and-down">&nbsp;sous-effectif</span></span>
                 {% endif %}
                 {% if nbBookableShifts == 0 %}

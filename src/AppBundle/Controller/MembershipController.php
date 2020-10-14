@@ -322,7 +322,10 @@ class MembershipController extends Controller
     private function createNewBeneficiaryForm(Membership $member)
     {
         $newBeneficiaryAction = $this->generateUrl('member_new_beneficiary', array('member_number' => $member->getMemberNumber()));
-        return $this->createForm(BeneficiaryType::class, new Beneficiary(), array('action' => $newBeneficiaryAction));
+        $beneficiary = new Beneficiary();
+        $beneficiary->setAddress($this->createDefaultAdress());
+
+        return $this->createForm(BeneficiaryType::class, $beneficiary, array('action' => $newBeneficiaryAction));
     }
 
     /**
@@ -673,6 +676,11 @@ class MembershipController extends Controller
 
         $member->addRegistration($registration);
 
+        if ($member->getMainBeneficiary() == null){
+            $b = new Beneficiary();
+            $b->setAddress($this->createDefaultAdress());
+            $member->setMainBeneficiary($b);
+        }
         $form = $this->createForm(MembershipType::class, $member);
         $form->handleRequest($request);
 
@@ -1016,5 +1024,14 @@ class MembershipController extends Controller
             return $this->redirectToRoute('member_show', array('member_number' => $member->getMemberNumber()));
         else
             return $this->redirectToRoute('member_show', array('member_number' => $member->getMemberNumber(), 'token' => $member->getTmpToken($session->get('token_key') . $this->getCurrentAppUser()->getUsername())));
+    }
+
+    private function createDefaultAdress(){
+        $address = new Address();
+        $address->setCity("-");
+        $address->setStreet1("-");
+        $address->setStreet2("-");
+        $address->setZipcode("00000");
+        return $address;
     }
 }

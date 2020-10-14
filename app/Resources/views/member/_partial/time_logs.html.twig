@@ -22,7 +22,12 @@
     <div id="add-time-log" class="modal">
         <div class="modal-content">
             <h5><i class="material-icons left small">access_time</i>Ajouter un log de temps</h5>
-            {{ form_widget(time_log_form) }}
+            {{ form_label(time_log_form.description) }}
+            {{ form_row(time_log_form.description) }}
+            {{ form_label(time_log_form.time) }}
+            {{ form_row(time_log_form.time) }}
+            {{ form_label(time_log_form.date) }}
+            {{ form_row(time_log_form.date) }}
         </div>
         <div class="modal-footer">
             <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat orange-text">Annuler</a>

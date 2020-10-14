@@ -121,6 +121,31 @@ class ShiftBucket
 
     }
 
+    public function getOccupationWithFormation() {
+        $nbreFormation = 0;
+        $nbreShifter = 0;
+        $nbreShifterFormation = 0;
+        foreach ($this->getShifts() as $shift) {
+            if ($shift->getFormation() != null) {
+                $nbreFormation++;
+                if ($shift->getShifter() != null)
+                    $nbreShifterFormation++;
+            }
+            if ($shift->getShifter() != null)
+                $nbreShifter++;
+        }
+
+        if ($nbreFormation == 0 && $nbreShifter > 0) {
+            return $nbreShifter / count($this->getShifts());
+        }
+
+        if ($nbreShifterFormation > 0) {
+            return $nbreShifterFormation / $nbreFormation;
+        }
+
+        return 0;
+    }
+
     public function getFirst()
     {
         return $this->shifts->first();
@@ -151,9 +176,13 @@ class ShiftBucket
 
     public function canBookInterval(Beneficiary $beneficiary) // check if none of the shifts belong to the beneficiary ?
     {
-        return !$beneficiary->getShifts()->exists(function ($key, Shift $shift) {
+        $alreadyBooked =  $beneficiary->getShifts()->exists(function ($key, Shift $shift) {
             return $shift->getStart() == $this->getStart() && $shift->getEnd() == $this->getEnd();
         });
+        $alreadyReserved = $beneficiary->getReservedShifts()->exists(function ($key, Shift $shift) {
+            return $shift->getStart() == $this->getStart() && $shift->getEnd() == $this->getEnd();
+        });
+        return !$alreadyBooked && !$alreadyReserved;
     }
 
     public function getIntervalCode()

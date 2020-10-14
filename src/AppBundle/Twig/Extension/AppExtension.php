@@ -119,25 +119,25 @@ class AppExtension extends AbstractExtension
 
     public function date_fr_long(\DateTime $date)
     {
-        setlocale(LC_TIME, 'fr_FR.UTF8');
+        setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%A %e %B", $date->getTimestamp());
     }
 
     public function date_time(\DateTime $date)
     {
-        setlocale(LC_TIME, 'fr_FR.UTF8');
+        setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%D %H:%M", $date->getTimestamp());
     }
 
     public function date_fr_full(\DateTime $date)
     {
-        setlocale(LC_TIME, 'fr_FR.UTF8');
+        setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%A %e %B %Y", $date->getTimestamp());
     }
 
     public function date_fr_with_time(\DateTime $date)
     {
-        setlocale(LC_TIME, 'fr_FR.UTF8');
+        setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%A %e %B %Y à %H:%M", $date->getTimestamp());
     }
 
@@ -183,7 +183,7 @@ class AppExtension extends AbstractExtension
                 $name .= 'espèce';
                 break;
             case Registration::TYPE_CHECK :
-                $name .= 'chéque';
+                $name .= 'chèque';
                 break;
             case Registration::TYPE_DEFAULT :
                 $name .= 'autre';

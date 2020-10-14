@@ -65,10 +65,10 @@ class TimeLogController extends Controller
 
         if ($form->isSubmitted() && $form->isValid()) {
 
-            $timeLog->setDate(new \DateTime());
+//            $timeLog->setDate(new \DateTime());
             $timeLog->setMembership($member);
-            $timeLog->setTime($form->get('time')->getData());
-            $timeLog->setDescription($form->get('description')->getData());
+//            $timeLog->setTime($form->get('time')->getData());
+//            $timeLog->setDescription($form->get('description')->getData());
             $timeLog->setType(TimeLog::TYPE_CUSTOM);
 
             $em = $this->getDoctrine()->getManager();

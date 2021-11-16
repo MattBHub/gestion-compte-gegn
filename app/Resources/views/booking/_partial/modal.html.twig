@@ -67,6 +67,17 @@
                 </div>
             {% endfor %}
             <p>Nombre de places restantes : {{ nbBookableShifts }}/{{ nbShifts }}</p>
+            {% if display_name_shifters %}
+              {% if nbBookableShifts < nbShifts %}
+                <ul>Personnes inscrites pour le moment :
+                  {% for shift in bucket.shifts %}
+                    {% if shift.shifter is not null %}
+                      <li>{{ shift.shifter.firstname }} {{ shift.shifter.lastname }}</li>
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endif %}
             {% for availableShift in availableShifts %}
                 <div>
                     <input type="radio" id="{{ availableShift.id }}" class="checkedFormation" name="formation"

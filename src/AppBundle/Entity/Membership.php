@@ -365,6 +365,22 @@ class Membership
     }
 
     /**
+     * Return if the member has a valid registration before the given date
+     *
+     * @param \DateTime $date
+     * @return \AppBundle\Entity\Registration
+     */
+    public function hasValidRegistrationBefore($date)
+    {
+        foreach ($this->getRegistrations() as $registration) {
+            if ($registration->getDate() < $date) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Get total shift duration for current cycle
      */
     public function getCycleShiftsDuration($cycleOffset = 0, $excludeDismissed = false)

@@ -376,7 +376,7 @@ class DefaultController extends Controller
                 $firstnames = $firstnames[0];
             }
 
-            $session->getFlashBag()->add('success', 'Ton message a été transmit à ' . $firstnames);
+            $session->getFlashBag()->add('success', 'Ton message a été transmis à ' . $firstnames);
             return $this->redirectToRoute('homepage');
         } else {
             $em = $this->getDoctrine()->getManager();
@@ -403,8 +403,9 @@ class DefaultController extends Controller
     {
         $job_id = $request->get('job_id');
         $buckets = array();
-        $display_end = $request->get('display_end') ? ($request->get('display_end') == 1) : false;
-        $display_on_empty = $request->get('display_on_empty') ? ($request->get('display_on_empty') == 1) : false;
+        $display_end = $request->query->has('display_end') ? ($request->get('display_end') == 1) : false;
+        $display_on_empty = $request->query->has('display_on_empty') ? ($request->get('display_on_empty') == 1) : false;
+        $title = $request->query->has('title') ? ($request->get('title') == 1) : true;
         $job = null;
         if ($job_id) {
             $em = $this->getDoctrine()->getManager();
@@ -426,7 +427,8 @@ class DefaultController extends Controller
             'job' => $job,
             'buckets' => $buckets,
             'display_end' => $display_end,
-            'display_on_empty' => $display_on_empty
+            'display_on_empty' => $display_on_empty,
+            'title' => $title
         ]);
 
     }

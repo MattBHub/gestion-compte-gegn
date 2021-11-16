@@ -8,8 +8,7 @@
            href="{{ path('member_freeze_change',{ 'id' : member.id }) }}">
             <i class="material-icons left">cancel</i>
             Annuler le gel de mon compte</a>
-    {% else %}
-
+    {% elseif display_freeze_account %}
         <a class="waves-effect waves-light btn modal-trigger blue" href="#pause"><i class="material-icons left">ac_unit</i>Geler
             mon compte</a>
         <!-- Modal Structure -->

@@ -656,6 +656,7 @@ class MembershipController extends Controller
             $user->setEmail($a_beneficiary->getEmail());
             $beneficiary = new Beneficiary();
             $beneficiary->setUser($user);
+            $beneficiary->setFlying(false);
             $member->setMainBeneficiary($beneficiary);
         }
 
@@ -812,6 +813,7 @@ class MembershipController extends Controller
 
         $beneficiary = new Beneficiary();
         $beneficiary->setUser(new User());
+        $beneficiary->setFlying(false);
         $beneficiary->setEmail($a_beneficiary->getEmail());
 
         $form->get('beneficiary')->setData($beneficiary);

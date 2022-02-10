@@ -35,6 +35,7 @@ class TimeLogEventListener
         $this->due_duration_by_cycle = $this->container->getParameter('due_duration_by_cycle');
         $this->cycle_duration = $this->container->getParameter('cycle_duration');
         $this->registration_duration = $this->container->getParameter('registration_duration');
+        $this->use_card_reader_to_validate_shifts = $this->container->getParameter('use_card_reader_to_validate_shifts');
         $this->maxTimeAtEndOfShift = $this->container->getParameter('max_time_at_end_of_shift');
     }
 
@@ -125,7 +126,7 @@ class TimeLogEventListener
         $registrationEnd = clone $member->getLastRegistration()->getDate();
         $registrationEnd->modify('+'.$this->registration_duration);
         $registrationEnd->modify('+'.$this->cycle_duration);
-        
+
         if ($date > $registrationEnd) {
             $this->createRegistrationExpiredLog($member,$date);
         } else if ($member->getFrozen()) {

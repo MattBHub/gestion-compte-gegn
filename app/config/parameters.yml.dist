@@ -14,8 +14,8 @@ parameters:
     super_admin.initial_password: password
 
     mailer_transport: smtp
-    mailer_host: 127.0.0.1
-    mailer_port: 25
+    mailer_host: mailcatcher
+    mailer_port: 1025
     mailer_user: ~
     mailer_password: ~
     mailer_encryption: null
@@ -81,6 +81,7 @@ parameters:
 
     # Registration
     registration_duration: '1 year'
+    registration_every_civil_year: false
     helloasso_registration_campaign_url: https://www.helloasso.com/associations/my-local-coop/adhesions/re-adhesion
     helloasso_campaign_id:
     helloasso_api_key:

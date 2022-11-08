@@ -2,7 +2,6 @@
 // src/AppBundle/Command/SendShiftAlertsCommand.php
 namespace AppBundle\Command;
 
-use AppBundle\Entity\Shift;
 use AppBundle\Entity\ShiftAlert;
 use AppBundle\Entity\ShiftBucket;
 use DateTime;
@@ -25,13 +24,17 @@ class SendShiftAlertsCommand extends ContainerAwareCommand
             ->addArgument('date', InputArgument::REQUIRED, 'The date format yyyy-mm-dd')
             ->addArgument('jobs', InputArgument::REQUIRED, 'Jobs ids (comma separated)')
             ->addOption('emails', null, InputOption::VALUE_OPTIONAL, 'Email recipients (comma separated)')
-            ->addOption('mattermostUrl', null, InputOption::VALUE_OPTIONAL, 'Mattermost webhook URL');
+            ->addOption('emailTemplate', null, InputOption::VALUE_OPTIONAL, 'Template used in email alerts', 'SHIFT_ALERT_EMAIL')
+            ->addOption('mattermostUrl', null, InputOption::VALUE_OPTIONAL, 'Mattermost webhook URL')
+            ->addOption('mattermostTemplate', null, InputOption::VALUE_OPTIONAL, 'Template used in Mattermost alerts', 'SHIFT_ALERT_MARKDOWN');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $date_given = $input->getArgument('date');
         $jobs = explode(',', $input->getArgument('jobs'));
+        $email_template = $input->getOption('emailTemplate');
+        $mattermost_template = $input->getOption('mattermostTemplate');
 
         $date = date_create_from_format('Y-m-d', $date_given);
         if (!$date || $date->format('Y-m-d') != $date_given) {
@@ -44,8 +47,8 @@ class SendShiftAlertsCommand extends ContainerAwareCommand
         $nbAlerts = count($alerts);
         if ($nbAlerts > 0) {
             $output->writeln('<fg=cyan;>Found ' . $nbAlerts . ' alerts to send</>');
-            $this->sendAlertsToMattermost($input, $output, $date, $alerts);
-            $this->sendAlertsByEmail($input, $output, $date, $alerts);
+            $this->sendAlertsToMattermost($input, $output, $date, $alerts, $mattermost_template);
+            $this->sendAlertsByEmail($input, $output, $date, $alerts, $email_template);
         } else {
             $output->writeln('<fg=cyan;>No shift alert to send</>');
         }
@@ -72,15 +75,20 @@ class SendShiftAlertsCommand extends ContainerAwareCommand
         $alerts = array();
         foreach ($buckets as $bucket) {
             $shifterCount = $bucket->getShifterCount();
-            if ($shifterCount < count($bucket->getShifts())) {
-                $issue = $shifterCount . ' personnes formées inscrites sur ' . count($bucket->getShifts());
+            $shiftCount = count($bucket->getShifts());
+            if ($shifterCount < $bucket->getJob()->getMinShifterAlert() && $shifterCount != $shiftCount) {
+                if ($shifterCount < 2) {
+                    $issue = $shifterCount . " personne inscrite sur " . $shiftCount;
+                } else {
+                    $issue = $shifterCount . " personnes inscrites sur " . $shiftCount;
+                }
                 $alerts[] = new ShiftAlert($bucket, $issue);
             }
         }
         return $alerts;
     }
 
-    private function sendAlertsByEmail(InputInterface $input, OutputInterface $output, DateTime $date, $alerts) {
+    private function sendAlertsByEmail(InputInterface $input, OutputInterface $output, DateTime $date, $alerts, $template) {
         $mailer = $this->getContainer()->get('mailer');
         $recipients = explode(',', $input->getOption('emails'));
         if ($recipients) {
@@ -91,7 +99,7 @@ class SendShiftAlertsCommand extends ContainerAwareCommand
             $shiftEmail = $this->getContainer()->getParameter('emails.shift');
 
             $em = $this->getContainer()->get('doctrine')->getManager();
-            $dynamicContent = $em->getRepository('AppBundle:DynamicContent')->findOneByCode("SHIFT_ALERT_EMAIL");
+            $dynamicContent = $em->getRepository('AppBundle:DynamicContent')->findOneByCode($template);
             $template = null;
             if ($dynamicContent) {
                 $template = $this->getContainer()->get('twig')->createTemplate($dynamicContent->getContent());
@@ -114,11 +122,11 @@ class SendShiftAlertsCommand extends ContainerAwareCommand
         }
     }
 
-    private function sendAlertsToMattermost(InputInterface $input, OutputInterface $output, DateTime $date, $alerts) {
+    private function sendAlertsToMattermost(InputInterface $input, OutputInterface $output, DateTime $date, $alerts, $template) {
         $mmHookUrl = $input->getOption('mattermostUrl');
         if ($mmHookUrl != null) {
             $em = $this->getContainer()->get('doctrine')->getManager();
-            $dynamicContent = $em->getRepository('AppBundle:DynamicContent')->findOneByCode("SHIFT_ALERT_MARKDOWN");
+            $dynamicContent = $em->getRepository('AppBundle:DynamicContent')->findOneByCode($template);
             $template = null;
             if ($dynamicContent) {
                 $template = $this->getContainer()->get('twig')->createTemplate($dynamicContent->getContent());
@@ -134,8 +142,8 @@ class SendShiftAlertsCommand extends ContainerAwareCommand
             $response = $client->request('POST', $mmHookUrl, [
                 'json' => ['text' => $content]
             ]);
-            $output->writeln('<fg=cyan;>Alerts posted on Mattermost</>');
         }
+        $output->writeln('<fg=cyan;>Alerts posted on Mattermost</>');
     }
 
 }

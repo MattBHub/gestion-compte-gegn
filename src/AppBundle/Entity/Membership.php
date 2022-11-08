@@ -29,7 +29,7 @@ class Membership
     protected $id;
 
     /**
-     * @ORM\Column(type="integer")
+     * @ORM\Column(type="bigint")
      * @Assert\NotBlank(message="Merci d'entrer votre numéro d'adhérent")
      */
     protected $member_number;
@@ -287,7 +287,8 @@ class Membership
         return $this->withdrawn;
     }
 
-    public function getCommissions(){
+    public function getCommissions()
+    {
         $commissions = array();
         foreach ($this->getBeneficiaries() as $beneficiary){
             $commissions = array_merge($beneficiary->getCommissions()->toArray(),$commissions);
@@ -295,7 +296,8 @@ class Membership
         return new ArrayCollection($commissions);
     }
 
-    public function getOwnedCommissions(){
+    public function getOwnedCommissions()
+    {
         return $this->getCommissions()->filter(function($commission) {
             $r = false;
             foreach ($commission->getOwners() as $owner){
@@ -362,6 +364,22 @@ class Membership
     public function getLastRegistration()
     {
         return $this->getRegistrations()->first();
+    }
+
+    /**
+     * Return if the member has a valid registration before the given date
+     *
+     * @param \DateTime $date
+     * @return \AppBundle\Entity\Registration
+     */
+    public function hasValidRegistrationBefore($date)
+    {
+        foreach ($this->getRegistrations() as $registration) {
+            if ($registration->getDate() < $date) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

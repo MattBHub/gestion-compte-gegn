@@ -2,11 +2,11 @@
 # Set parameters here that may be different on each deployment target of the app, e.g. development, staging, production.
 # https://symfony.com/doc/current/best_practices/configuration.html#infrastructure-related-configuration
 parameters:
-    database_host: 127.0.0.1
-    database_port: ~
+    database_host: database
+    database_port: 3306
     database_name: symfony
     database_user: root
-    database_password: ~
+    database_password: secret
     # You should uncomment this if you want to use pdo_sqlite
     #database_path: '%kernel.project_dir%/var/data/data.sqlite'
 
@@ -14,8 +14,8 @@ parameters:
     super_admin.initial_password: password
 
     mailer_transport: smtp
-    mailer_host: 127.0.0.1
-    mailer_port: 25
+    mailer_host: mailcatcher
+    mailer_port: 1025
     mailer_user: ~
     mailer_password: ~
     mailer_encryption: null
@@ -81,6 +81,7 @@ parameters:
 
     # Registration
     registration_duration: '1 year'
+    registration_every_civil_year: false
     helloasso_registration_campaign_url: https://www.helloasso.com/associations/my-local-coop/adhesions/re-adhesion
     helloasso_campaign_id:
     helloasso_api_key:
@@ -93,9 +94,23 @@ parameters:
     cycle_duration: '28 days'
     maximum_nb_of_beneficiaries_in_membership: 2
     new_users_start_as_beginner: true
-    unlimited_book_duration: false
+    allow_extra_shifts: true
+    max_time_in_advance_to_book_extra_shifts: '3 days'
     display_gauge: true
     use_fly_and_fixed: false
+    time_after_which_members_are_late_with_shifts: -9
+    reserve_new_shift_to_prior_shifter: true
+    forbid_shift_overlap_time: 30
+    display_name_shifters: false
+    use_card_reader_to_validate_shifts: false
+    max_time_at_end_of_shift: 0
+
+    # Swipe card configuration
+    swipe_card_logging: true
+    display_swipe_cards_settings: true
+
+    # Default formations
+    default_formation_ids: []
 
     logging.mattermost.enabled: false
     logging.mattermost.level: 'critical'
@@ -106,5 +121,6 @@ parameters:
     logging.swiftmailer.level: 'critical'
     logging.swiftmailer.recipient: ~
 
-
     code_generation_enabled: true
+    display_freeze_account: true
+    display_keys_shop: true

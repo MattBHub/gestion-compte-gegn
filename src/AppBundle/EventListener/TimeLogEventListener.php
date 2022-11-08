@@ -11,6 +11,8 @@ use AppBundle\Event\ShiftBookedEvent;
 use AppBundle\Event\ShiftDeletedEvent;
 use AppBundle\Event\ShiftDismissedEvent;
 use AppBundle\Event\ShiftFreedEvent;
+use AppBundle\Event\ShiftValidatedEvent;
+use AppBundle\Event\ShiftInvalidatedEvent;
 use Doctrine\ORM\EntityManager;
 use Monolog\Logger;
 use Symfony\Component\DependencyInjection\Container;
@@ -23,6 +25,7 @@ class TimeLogEventListener
     protected $due_duration_by_cycle;
     protected $cycle_duration;
     protected $registration_duration;
+    protected $maxTimeAtEndOfShift ;
 
     public function __construct(EntityManager $entityManager, Logger $logger, Container $container)
     {
@@ -32,6 +35,8 @@ class TimeLogEventListener
         $this->due_duration_by_cycle = $this->container->getParameter('due_duration_by_cycle');
         $this->cycle_duration = $this->container->getParameter('cycle_duration');
         $this->registration_duration = $this->container->getParameter('registration_duration');
+        $this->use_card_reader_to_validate_shifts = $this->container->getParameter('use_card_reader_to_validate_shifts');
+        $this->maxTimeAtEndOfShift = $this->container->getParameter('max_time_at_end_of_shift');
     }
 
     /**
@@ -42,8 +47,34 @@ class TimeLogEventListener
     public function onShiftBooked(ShiftBookedEvent $event)
     {
         $this->logger->info("Time Log Listener: onShiftBooked");
-        $shift = $event->getShift();
-        $this->createShiftLog($shift);
+        if (!$this->use_card_reader_to_validate_shifts) {
+            $shift = $event->getShift();
+            $this->createShiftLog($shift);
+        }
+    }
+
+    /**
+     * @param ShiftValidatedEvent $event
+     * @throws \Doctrine\ORM\ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function onShiftValidated(ShiftValidatedEvent $event)
+    {
+        $this->logger->info("Time Log Listener: onShiftValidated");
+        if ($this->use_card_reader_to_validate_shifts) {
+            $shift = $event->getShift();
+            $this->createShiftLog($shift);
+        }
+    }
+
+    /**
+     * @param ShiftInvalidatedEvent $event
+     * @throws \Doctrine\ORM\ORMException
+     */
+    public function onShiftInvalidated(ShiftInvalidatedEvent $event)
+    {
+        $this->logger->info("Time Log Listener: onShiftInvalidated");
+        $this->deleteShiftLogs($event->getShift(), $event->getMembership());
     }
 
     /**
@@ -95,7 +126,7 @@ class TimeLogEventListener
         $registrationEnd = clone $member->getLastRegistration()->getDate();
         $registrationEnd->modify('+'.$this->registration_duration);
         $registrationEnd->modify('+'.$this->cycle_duration);
-        
+
         if ($date > $registrationEnd) {
             $this->createRegistrationExpiredLog($member,$date);
         } else if ($member->getFrozen()) {
@@ -165,10 +196,13 @@ class TimeLogEventListener
         $this->em->persist($log);
 
         $counter_today = $membership->getTimeCount($date);
-        if ($counter_today > $this->due_duration_by_cycle) { //surbook
+
+        $allowed_cumul = $this->maxTimeAtEndOfShift;
+
+        if ($counter_today > ($this->due_duration_by_cycle + $allowed_cumul)) { //surbook
             $log = new TimeLog();
             $log->setMembership($membership);
-            $log->setTime(-1 * ($counter_today - $this->due_duration_by_cycle));
+            $log->setTime(-1 * ($counter_today - ($this->due_duration_by_cycle + $allowed_cumul)));
             $log->setDate($date);
             $log->setType(TimeLog::TYPE_CYCLE_END_REGULATE_OPTIONAL_SHIFTS);
             $this->em->persist($log);

@@ -27,13 +27,14 @@ class ShiftServiceTest extends TestCase
             ->getMockBuilder(EntityManager::class)
             ->disableOriginalConstructor()
             ->getMock();
-        $this->shiftService = new ShiftService($this->em, 180, 90, false, false);
+        $this->shiftService = new ShiftService($this->em, 180, 90, false, false, '3 days', 30);
     }
 
     public function testShiftTimeByCycle()
     {
         $member = new Membership();
         $beneficiary = new Beneficiary();
+        $beneficiary->setFlying(false);
         $member->setMainBeneficiary($beneficiary);
 
         $this->assertEquals(true, $this->shiftService->canBookOnCycle($beneficiary, 0));
@@ -72,6 +73,7 @@ class ShiftServiceTest extends TestCase
     private function doIsShiftBookableTest($beginner, $emptyShift)
     {
         $beneficiary = new Beneficiary();
+        $beneficiary->setFlying(false);
         $member = new Membership();
         $member->setMainBeneficiary($beneficiary);
         $user = new User();
@@ -86,7 +88,7 @@ class ShiftServiceTest extends TestCase
         $shiftService = $this
             ->getMockBuilder(ShiftService::class)
             ->setMethods(['isShiftEmpty', 'canBookDuration', 'isBeginner'])
-            ->setConstructorArgs([$this->em, 180, 90, false, false])
+            ->setConstructorArgs([$this->em, 180, 90, false, false, '3 days', 30])
             ->getMock()
         ;
         $shiftService->expects($this->any())
@@ -126,11 +128,12 @@ class ShiftServiceTest extends TestCase
     private function doTestIsBeginner($beginner, $newUserStartAsBeginner)
     {
         $beneficiary = new Beneficiary();
+        $beneficiary->setFlying(false);
 
         $shiftService = $this
             ->getMockBuilder(ShiftService::class)
             ->setMethods(['hasPreviousValidShifts'])
-            ->setConstructorArgs([$this->em, 180, 90, $newUserStartAsBeginner, false])
+            ->setConstructorArgs([$this->em, 180, 90, $newUserStartAsBeginner, false, '3 days', 30])
             ->getMock()
         ;
 

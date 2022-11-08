@@ -13,6 +13,7 @@ use AppBundle\Repository\JobRepository;
 
 class PeriodType extends AbstractType
 {
+
     /**
      * {@inheritdoc}
      */

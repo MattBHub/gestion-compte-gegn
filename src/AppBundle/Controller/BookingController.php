@@ -8,10 +8,13 @@ use AppBundle\Event\ShiftBookedEvent;
 use AppBundle\Event\ShiftDeletedEvent;
 use AppBundle\Event\ShiftDismissedEvent;
 use AppBundle\Event\ShiftFreedEvent;
+use AppBundle\Event\ShiftValidatedEvent;
+use AppBundle\Event\ShiftInvalidatedEvent;
 use AppBundle\Security\MembershipVoter;
 use AppBundle\Security\ShiftVoter;
 use DateTime;
 use AppBundle\Entity\ShiftBucket;
+use AppBundle\Form\ShiftType;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
@@ -229,15 +232,66 @@ class BookingController extends Controller
                 ->add('shift_id', HiddenType::class)
                 ->getForm();
 
+            $shift_delete_form = array();
+            $shift_add_form = array();
+            foreach ($shifts as $shift) {
+                $shift_delete_form[$shift->getId()] = $this->createFormBuilder()
+                    ->setAction($this->generateUrl('shift_delete', array('id' => $shift->getId())))
+                    ->setMethod('DELETE')
+                    ->getForm()->createView();
+                $shift_add_form[$shift->getId()] = $this->createForm(
+                    ShiftType::class,
+                    $shift,
+                    array('action' => $this->generateUrl('shift_new'), 'only_add_formation' => true)
+                  )
+                ->createView();
+            }
+
             return $this->render('admin/booking/index.html.twig', [
                 'form' => $form->createView(),
                 'bucketsByDay' => $bucketsByDay,
                 'hours' => $hours,
                 'jobs' => $jobs,
                 'delete_bucket_form' => $delete_bucket_form->createView(),
-                'beneficiaries' => $beneficiaries
+                'beneficiaries' => $beneficiaries,
+                'shift_delete_form' => $shift_delete_form,
+                'shift_add_form' => $shift_add_form
             ]);
         }
+    }
+
+    /**
+     * @Route("/edit_bucket/{id}", name="shift_edit")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
+     * @Method({"GET", "POST"})
+     */
+    public function editBucketAction(Request $request,Shift $shift)
+    {
+        $session = new Session();
+
+        $form = $this->createForm(ShiftType::class, $shift);
+        // Keep a record of the shift before update
+        $bucket = clone($shift);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $em = $this->getDoctrine()->getManager();
+            $shifts = $em->getRepository('AppBundle:Shift')->findBy(array('job' => $bucket->getJob(), 'start' => $bucket->getStart(), 'end' => $bucket->getEnd()));
+            foreach ($shifts as $s) {
+                $s->setStart($shift->getStart());
+                $s->setEnd($shift->getEnd());
+                $s->setJob($shift->getJob());
+                $em->persist($s);
+            }
+            $em->flush();
+            $session->getFlashBag()->add('success', 'Le créneau a bien été édité !');
+            return $this->redirectToRoute('booking_admin');
+        }
+
+        return $this->render('admin/shift/edit.html.twig', array(
+            "form" => $form->createView(),
+            "shift" => $shift
+        ));
     }
 
     /**
@@ -335,7 +389,7 @@ class BookingController extends Controller
         $dispatcher = $this->get('event_dispatcher');
         $dispatcher->dispatch(ShiftBookedEvent::NAME, new ShiftBookedEvent($shift, false));
 
-        $session->getFlashBag()->add("success", "Ce créneau a bien été résérvé");
+        $session->getFlashBag()->add("success", "Ce créneau a bien été réservé");
         return new Response($this->generateUrl('homepage'), 200);
     }
 
@@ -355,9 +409,15 @@ class BookingController extends Controller
 
         $beneficiary = $shift->getShifter();
         $em = $this->getDoctrine()->getManager();
-        $shift->setShifter(null);
-        $shift->setBooker(null);
-        $shift->setFixe(false);
+        if($shift->isFixe()) {
+            $session = new Session();
+            $session->getFlashBag()->add("error", "Impossible d'annuler un créneau fixe");
+            return $this->redirectToRoute("booking");
+        } else {
+            $shift->setShifter(null);
+            $shift->setBooker(null);
+            $shift->setFixe(false);
+        }
         $em->persist($shift);
         $em->flush();
 
@@ -430,7 +490,7 @@ class BookingController extends Controller
                 $shift->setShifter($beneficiary);
                 $shift->setBookedTime(new DateTime('now'));
                 $shift->setLastShifter(null);
-                $shift->setFixe(false);
+//                $shift->setFixe(false);
                 $em = $this->getDoctrine()->getManager();
                 $em->persist($shift);
                 $em->flush();
@@ -468,6 +528,7 @@ class BookingController extends Controller
         if ($shift->getId()) {
             if ($shift->getLastShifter()) {
                 $shift->setLastShifter(null);
+                $shift->setFixe(false);
                 $em = $this->getDoctrine()->getManager();
                 $em->persist($shift);
                 $em->flush();
@@ -564,6 +625,7 @@ class BookingController extends Controller
 
         $em = $this->getDoctrine()->getManager();
         $shift->free();
+        $shift->invalidateShiftParticipation();
         $em->persist($shift);
         $em->flush();
 
@@ -579,7 +641,69 @@ class BookingController extends Controller
     }
 
     /**
-     * free a shift.
+     * validate a shift.
+     *
+     * @Route("/validate_shift/{id}", name="validate_shift")
+     * @Method("POST")
+     */
+    public function validateShiftAction(Request $request, Shift $shift)
+    {
+        $this->denyAccessUnlessGranted(ShiftVoter::VALIDATE, $shift);
+        $session = new Session();
+
+        if ($shift->getWasCarriedOut() == 0) {
+            $membership = $shift->getShifter()->getMembership();
+
+            $em = $this->getDoctrine()->getManager();
+            $shift->validateShiftParticipation();
+            $em->persist($shift);
+            $em->flush();
+
+            $dispatcher = $this->get('event_dispatcher');
+            $dispatcher->dispatch(ShiftValidatedEvent::NAME, new ShiftValidatedEvent($shift));
+
+            $session->getFlashBag()->add('success', "La participation au créneau a bien été validée");
+        } else {
+            $session->getFlashBag()->add('error', "La participation au créneau a déjà été validée");
+        }
+
+        $referer = $request->headers->get('referer');
+        return new RedirectResponse($referer);
+    }
+
+    /**
+     * invalidate a shift.
+     *
+     * @Route("/invalidate_shift/{id}", name="invalidate_shift")
+     * @Method("POST")
+     */
+    public function invalidateShiftAction(Request $request, Shift $shift)
+    {
+        $this->denyAccessUnlessGranted(ShiftVoter::INVALIDATE, $shift);
+        $session = new Session();
+
+        if ($shift->getWasCarriedOut() == 0) {
+            $membership = $shift->getShifter()->getMembership();
+
+            $em = $this->getDoctrine()->getManager();
+            $shift->invalidateShiftParticipation();
+            $em->persist($shift);
+            $em->flush();
+
+            $dispatcher = $this->get('event_dispatcher');
+            $dispatcher->dispatch(ShiftInvalidatedEvent::NAME, new ShiftInvalidatedEvent($shift, $membership));
+
+            $session->getFlashBag()->add('success', "La participation au créneau a bien été invalidée");
+        } else {
+            $session->getFlashBag()->add('error', "La participation au créneau a déjà été invalidée");
+        }
+
+        $referer = $request->headers->get('referer');
+        return new RedirectResponse($referer);
+    }
+
+    /**
+     * lock a shift.
      *
      * @Route("/lock_shift/{id}", name="lock_shift")
      * @Method("GET")

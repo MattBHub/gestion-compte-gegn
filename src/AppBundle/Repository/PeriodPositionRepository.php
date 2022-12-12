@@ -1,6 +1,7 @@
 <?php
 
 namespace AppBundle\Repository;
+use AppBundle\Entity\Beneficiary;
 
 /**
  * PeriodRoomRepository
@@ -10,4 +11,39 @@ namespace AppBundle\Repository;
  */
 class PeriodPositionRepository extends \Doctrine\ORM\EntityRepository
 {
+    /**
+     * @param int $beneficiary
+     *
+     * @return array
+     */
+    public function findByBeneficiary($beneficiary)
+    {
+        $qb = $this->createQueryBuilder('pp');
+        $qb->where('pp.shifter = :shifter')
+            ->setParameter('shifter', $beneficiary)
+            ->leftJoin('pp.period', 'p')
+            ->addOrderBy('p.dayOfWeek', 'ASC')
+            ->addOrderBy('p.start', 'ASC');
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @param array $beneficiaries
+     *
+     * @return array
+     */
+    public function findByBeneficiaries($beneficiaries)
+    {
+        $qb = $this->createQueryBuilder('pp');
+        $qb->where('pp.shifter IN (:shiftersId)')
+            ->setParameter('shiftersId', array_map(function(Beneficiary $beneficiary) {
+                return $beneficiary->getId();
+            }, $beneficiaries->toArray()))
+            ->leftJoin('pp.period', 'p')
+            ->addOrderBy('p.dayOfWeek', 'ASC')
+            ->addOrderBy('p.start', 'ASC');
+
+        return $qb->getQuery()->getResult();
+    }
 }

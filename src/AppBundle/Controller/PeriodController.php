@@ -2,28 +2,32 @@
 
 namespace AppBundle\Controller;
 
-use AppBundle\AppBundle;
+use AppBundle\Entity\Beneficiary;
 use AppBundle\Entity\BookedShift;
 use AppBundle\Entity\Job;
 use AppBundle\Entity\Period;
 use AppBundle\Entity\PeriodPosition;
-use AppBundle\Entity\Shift;
-use AppBundle\Entity\User;
+use AppBundle\Form\AutocompleteBeneficiaryType;
 use AppBundle\Form\PeriodPositionType;
 use AppBundle\Form\PeriodType;
+use AppBundle\Repository\JobRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Request;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Symfony\Component\Validator\Constraints\DateTime;
 
 /**
 * @Route("period")
@@ -31,24 +35,112 @@ use Symfony\Component\Validator\Constraints\DateTime;
 class PeriodController extends Controller
 {
     /**
-     * @Route("/", name="period")
-     * @Security("has_role('ROLE_ADMIN')")
+     * Build the filter form for the admin main page (route /booking/admin)
+     * and rerun an array with  the form object and the date range and the action
+     *
+     * the return object :
+     * array(
+     *      "form":FormBuilderInterface
+     *      "from" => DateTime,
+     *      "to" => DateTime,
+     *      "job"=> Job|null,
+     *      "filling"=>str|null,
+     *      )
      */
-    public function indexAction(Request $request)
+    private function filterFormFactory(Request $request): array
     {
-        $em = $this->getDoctrine()->getManager();
-        $periods = array();
-        for($i=0;$i<7;$i++){
-            $periods[$i] = $em->getRepository('AppBundle:Period')->findBy(array('dayOfWeek'=>$i),array('start'=>'ASC'));
+        // default values
+        $res = [
+            "job" => null,
+            "filling"=>null,
+            "week"=>null,
+        ];
+
+        // filter creation ----------------------
+        $res["form"] = $this->createFormBuilder()
+            ->setAction($this->generateUrl('period'))
+            ->add('job', EntityType::class, array(
+                'label' => 'Type de créneau',
+                'class' => 'AppBundle:Job',
+                'choice_label' => 'name',
+                'multiple' => false,
+                'required' => false,
+                'query_builder' => function(JobRepository $repository) {
+                    $qb = $repository->createQueryBuilder('j');
+                    return $qb
+                        ->where($qb->expr()->eq('j.enabled', '?1'))
+                        ->setParameter('1', '1')
+                        ->orderBy('j.name', 'ASC');
+                }
+            ))
+            ->add('filling', ChoiceType::class, array(
+                'label' => 'Remplissage',
+                'required' => false,
+                'choices' => array(
+                    'Complet' => 'full',
+                    'Partiel' => 'partial',
+                    'Vide' => 'empty',
+                    'Problématique' => 'problematic'
+                ),
+            ))
+            ->add('week', ChoiceType::class, array(
+                'label' => 'Semaine',
+                'required' => false,
+                'choices' => array(
+                    'A' => 'A',
+                    'B' => 'B',
+                    'C' => 'C',
+                    'D' => 'D',
+                ),
+            ))
+            ->add('filter', SubmitType::class, array(
+                'label' => 'Filtrer',
+                'attr' => array('class' => 'btn', 'value' => 'filtrer')
+            ))
+            ->getForm();
+
+        $res["form"]->handleRequest($request);
+
+        if ($res["form"]->isSubmitted() && $res["form"]->isValid()) {
+            $res["job"] = $res["form"]->get("job")->getData();
+            $res["filling"] = $res["form"]->get("filling")->getData();
+            $res["week"] = $res["form"]->get("week")->getData();
+
         }
-        return $this->render('admin/period/list.html.twig',array(
-            "periods" => $periods
+
+        return $res;
+    }
+
+
+    /**
+     * @Route("/", name="period")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
+     */
+    public function indexAction(Request $request, EntityManagerInterface $em): Response
+    {
+        $filter = $this->filterFormFactory($request);
+        $periodsByDay = array();
+        for($i=0;$i<7;$i++){
+            $findByFilter = array('dayOfWeek'=>$i);
+
+            if($filter["job"]){
+                $findByFilter["job"]=$filter["job"];
+            }
+
+            $periodsByDay[$i] = $em->getRepository('AppBundle:Period')
+                ->findBy($findByFilter,array('start'=>'ASC'));
+        }
+        return $this->render('admin/period/index.html.twig',array(
+            "periods_by_day" => $periodsByDay,
+            "filter_form" => $filter['form']->createView(),
+            "week_filter" => $filter['week'],
+            "filling_filter" => $filter["filling"]
         ));
     }
 
     /**
      * @Route("/new", name="period_new")
-     * @Security("has_role('ROLE_ADMIN')")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
      * @Method({"GET", "POST"})
      */
     public function newAction(Request $request)
@@ -60,7 +152,7 @@ class PeriodController extends Controller
         $job = $em->getRepository(Job::class)->findOneBy(array());
 
         if (!$job) {
-            $session->getFlashBag()->add('warning', 'Commençons par créer un poste de bénevolat');
+            $session->getFlashBag()->add('warning', 'Commençons par créer un poste de bénévolat');
             return $this->redirectToRoute('job_new');
         }
 
@@ -74,10 +166,9 @@ class PeriodController extends Controller
             $time = $form->get('end')->getData();
             $period->setEnd(new \DateTime($time));
 
-
             $em->persist($period);
             $em->flush();
-            $session->getFlashBag()->add('success', 'Le nouveau creneau type a bien été créé !');
+            $session->getFlashBag()->add('success', 'Le nouveau créneau type a bien été créé !');
             return $this->redirectToRoute('period_edit',array('id'=>$period->getId()));
         }
 
@@ -87,62 +178,76 @@ class PeriodController extends Controller
     }
 
     /**
-     * @Route("/edit/{id}", name="period_edit")
-     * @Security("has_role('ROLE_ADMIN')")
+     * @Route("/{id}/edit", name="period_edit")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
      * @Method({"GET", "POST"})
      */
-    public function editAction(Request $request,Period $period)
+    public function editAction(Request $request, Period $period)
     {
         $session = new Session();
 
         $form = $this->createForm(PeriodType::class, $period);
         $form->handleRequest($request);
 
+        $em = $this->getDoctrine()->getManager();
         if ($form->isSubmitted() && $form->isValid()) {
-
             $time = $form->get('start')->getData();
             $period->setStart(new \DateTime($time));
             $time = $form->get('end')->getData();
             $period->setEnd(new \DateTime($time));
 
-            $em = $this->getDoctrine()->getManager();
             $em->persist($period);
             $em->flush();
             $session->getFlashBag()->add('success', 'Le créneau type a bien été édité !');
             return $this->redirectToRoute('period');
         }
 
+        $beneficiaries = $em->getRepository(Beneficiary::class)->findAllActive();
+
         $form->get('start')->setData($period->getStart()->format('H:i'));
         $form->get('end')->setData($period->getEnd()->format('H:i'));
 
-        $delete_form = $this->createFormBuilder()
+        $deleteForm = $this->createFormBuilder()
             ->setAction($this->generateUrl('period_delete', array('id' => $period->getId())))
             ->setMethod('DELETE')
             ->getForm();
 
-        $positions_delete_form = array();
-        foreach($period->getPositions() as $position){
-            $positions_delete_form[$position->getId()] = $this->createFormBuilder()
-                ->setAction($this->generateUrl('remove_position_from_period', array('period' => $period->getId(),'position' => $position->getId())))
-                ->setMethod('DELETE')
-                ->getForm()->createView();
+        $positionsDeleteForms = array();
+        foreach($period->getPositions() as $position) {
+            $positionsDeleteForms[$position->getId()] = $this->createDeletePeriodPositionForm($period, $position)->createView();
+        }
+
+        $positionForm = $this->createForm(
+            PeriodPositionType::class,
+            new PeriodPosition(),
+            array('action' => $this->generateUrl(
+                'add_position_to_period',
+                array('id' => $period->getId())))) ;
+
+        $positionsBookForms = [];
+        foreach ($period->getPositions() as $position) {
+            if (!$position->getShifter()) {
+                $positionsBookForms[$position->getId()] = $this->createBookForm($period, $position)->createView();
+            }
         }
 
         return $this->render('admin/period/edit.html.twig', array(
             "form" => $form->createView(),
             "period" => $period,
-            "position_form" => $this->createForm(PeriodPositionType::class, new PeriodPosition(), array('action' => $this->generateUrl('add_position_to_period', array('id' => $period->getId()))))->createView(),
-            "delete_form" => $delete_form->createView(),
-            "positions_delete_form" => $positions_delete_form
+            "beneficiaries" => $beneficiaries,
+            "position_form" => $positionForm->createView(),
+            "delete_form" => $deleteForm->createView(),
+            "positions_book_forms" => $positionsBookForms,
+            "positions_delete_forms" => $positionsDeleteForms,
         ));
     }
 
     /**
-     * @Route("/{id}/add_position/", name="add_position_to_period")
-     * @Security("has_role('ROLE_ADMIN')")
+     * @Route("/{id}/position/add", name="add_position_to_period")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
      * @Method({"POST"})
      */
-    public function addPositionToPeriodAction(Request $request,Period $period)
+    public function addPositionToPeriodAction(Request $request, Period $period)
     {
         $session = new Session();
 
@@ -152,15 +257,19 @@ class PeriodController extends Controller
 
         if ($form->isSubmitted() && $form->isValid()) {
             $em = $this->getDoctrine()->getManager();
-            $existingPosition = $em->getRepository('AppBundle:PeriodPosition')->findOneBy(array("formation"=>$position->getFormation(),"nbOfShifter"=>$position->getNbOfShifter()));
-            if ($existingPosition){
-                $session->getFlashBag()->add('info', 'La position existe déjà');
-                $position = $existingPosition;
+            foreach ($form["week_cycle"]->getData() as $week_cycle) {
+                $position->setWeekCycle($week_cycle);
+                $nb_of_shifter = $form["nb_of_shifter"]->getData();
+                while (0 < $nb_of_shifter ){
+                    $p = clone($position);
+                    $period->addPosition($p);
+                    $em->persist($p);
+                    $nb_of_shifter--;
+                }
             }
-            $period->addPosition($position);
             $em->persist($period);
             $em->flush();
-            $session->getFlashBag()->add('success', 'La position '.$position.' a bien été ajoutée');
+            $session->getFlashBag()->add('success', 'Le poste '.$position.' a bien été ajouté');
             return $this->redirectToRoute('period_edit',array('id'=>$period->getId()));
         }
 
@@ -168,36 +277,97 @@ class PeriodController extends Controller
     }
 
     /**
-     * @Route("/{period}/remove_position/{position}", name="remove_position_from_period")
-     * @Security("has_role('ROLE_ADMIN')")
+     * @Route("/{id}/position/{position}", name="remove_position_from_period")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
      * @Method({"DELETE"})
      */
-    public function removePositionToPeriodAction(Request $request,Period $period,PeriodPosition $position)
+    public function removePositionToPeriodAction(Request $request, Period $period, PeriodPosition $position)
     {
         $session = new Session();
 
-        $form = $this->createFormBuilder()
-            ->setAction($this->generateUrl('remove_position_from_period', array('period' => $period->getId(),'position' => $position->getId())))
-            ->setMethod('DELETE')
-            ->getForm();
+        $form = $this->createDeletePeriodPositionForm($period, $position);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $em = $this->getDoctrine()->getManager();
-            $period->removePosition($position);
-            $em->persist($period);
+            $em->remove($position);
             $em->flush();
-            $session->getFlashBag()->add('success', 'La position '.$position.' a bien été supprimée');
+            $session->getFlashBag()->add('success', 'Le poste '.$position.' a bien été supprimé !');
             return $this->redirectToRoute('period_edit',array('id'=>$period->getId()));
         }
 
         return $this->redirectToRoute('period_edit',array('id'=>$period->getId()));
+    }
+
+    /**
+     * Book a period.
+     *
+     * @Route("/{id}/position/{position}/book", name="book_position_from_period")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
+     * @Method("POST")
+     */
+    public function bookPositionToPeriodAction(Request $request, Period $period, PeriodPosition $position): Response
+    {
+        $session = new Session();
+
+        $form = $this->createBookForm($period, $position);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+
+            if ($position->getShifter()) {
+                $session->getFlashBag()->add("error", "Désolé, ce créneau est déjà réservé");
+                return new Response($this->generateUrl('period_edit',array('id'=>$period->getId())), 205);
+            }
+
+            $beneficiary = $form->get("shifter")->getData();
+            if ($position->getFormation() && !$beneficiary->getFormations()->contains($position->getFormation())) {
+                $session
+                    ->getFlashBag()
+                    ->add("error", "Désolé, ce bénévole n'a pas la qualification nécessaire (" . $position->getFormation()->getName() . ")");
+                return new Response($this->generateUrl('period_edit',array('id'=>$period->getId())), 205);
+            }
+
+            if (!$position->getBooker()) {
+                $current_user = $this->get('security.token_storage')->getToken()->getUser();
+                $position->setBooker($current_user);
+                $position->setBookedTime(new \DateTime('now'));
+            }
+
+            $em = $this->getDoctrine()->getManager();
+            $position->setShifter($beneficiary);
+            $em->persist($position);
+            $em->flush();
+
+            $session->getFlashBag()->add("success", "Créneau fixe réservé avec succès pour " . $position->getShifter());
+        }
+        return $this->redirectToRoute('period_edit',array('id'=>$period->getId()));
+    }
+
+    /**
+     * free a position.
+     *
+     * @Route("/{id}/position/{position}/free", name="free_position_from_period")
+     * @Security("has_role('ROLE_SHIFT_MANAGER')")
+     * @Method("POST")
+     */
+    public function freePositionToPeriodAction(Request $request, Period $period, PeriodPosition $position)
+    {
+        $session = new Session();
+
+        $em = $this->getDoctrine()->getManager();
+        $position->free();
+        $em->persist($position);
+        $em->flush();
+
+        $session->getFlashBag()->add('success', "Le poste a bien été libéré");
+        return $this->redirectToRoute('period_edit',array('id'=>$position->getPeriod()->getId()));
     }
 
     /**
      * Deletes a period entity.
      *
-     * @Route("/period/{id}", name="period_delete")
+     * @Route("/{id}", name="period_delete")
      * @Security("has_role('ROLE_ADMIN')")
      * @Method("DELETE")
      */
@@ -239,8 +409,8 @@ class PeriodController extends Controller
         );
         $form = $this->createFormBuilder()
             ->setAction($this->generateUrl('period_copy'))
-            ->add('day_of_week_from',ChoiceType::class,array('label'=>'Jour de la semaine référence','choices' => $days))
-            ->add('day_of_week_to',ChoiceType::class,array('label'=>'Jour de la semaine destination','choices' => $days))
+            ->add('day_of_week_from', ChoiceType::class, array('label' => 'Jour de la semaine référence', 'choices' => $days))
+            ->add('day_of_week_to', ChoiceType::class, array('label' => 'Jour de la semaine destination', 'choices' => $days))
             ->getForm();
 
         $form->handleRequest($request);
@@ -317,5 +487,37 @@ class PeriodController extends Controller
             "form" => $form->createView()
         ));
     }
-    
+
+    /**
+     * Creates a form to book a period position entity.
+     *
+     * @param Period $period The period entity
+     * @param PeriodPosition $position The period position entity
+     *
+     * @return \Symfony\Component\Form\Form The form
+     */
+    private function createBookForm(Period $period, PeriodPosition $position)
+    {
+        return $this->get('form.factory')->createNamedBuilder('positions_book_forms_' . $position->getId())
+            ->setAction($this->generateUrl('book_position_from_period', array('id' => $period->getId(), 'position' => $position->getId())))
+            ->setMethod('POST')
+            ->add('shifter', AutocompleteBeneficiaryType::class, array('label' => 'Numéro d\'adhérent ou nom du membre', 'required' => true))
+            ->getForm();
+    }
+
+    /**
+     * Creates a form to delete a period position entity.
+     *
+     * @param Period $period The period entity
+     * @param PeriodPosition $position The period position entity
+     *
+     * @return \Symfony\Component\Form\Form The form
+     */
+    private function createDeletePeriodPositionForm(Period $period, PeriodPosition $position)
+    {
+        return $this->get('form.factory')->createNamedBuilder('positions_delete_forms_' . $position->getId())
+            ->setAction($this->generateUrl('remove_position_from_period', array('id' => $period->getId(), 'position' => $position->getId())))
+            ->setMethod('DELETE')
+            ->getForm();
+    }
 }

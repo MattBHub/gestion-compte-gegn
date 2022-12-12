@@ -40,6 +40,15 @@ class ShiftBucket
         }
     }
 
+    public function removeEmptyShift()
+    {
+        foreach ($this->shifts as $shiftKey => $shift) {
+            if ($shift->getShifter() == NULL && count($this->shifts) > 1) {
+                unset($this->shifts[$shiftKey]);
+            }
+        }
+    }
+
     static public function compareShifts(Shift $a, Shift $b, Beneficiary $beneficiary = null)
     {
         if (!$beneficiary) {
@@ -62,10 +71,15 @@ class ShiftBucket
                     return 1;
                 }
             } else {
-                if (!$b->getFormation())
+                if (!$b->getFormation()) {
                     return -1;
-                else
-                    return $a->getFormation()->getId() < $b->getFormation()->getId();
+                } else {
+                    if ($a->getFormation()->getId() != $b->getFormation()->getId()) {
+                        return $a->getFormation()->getId() < $b->getFormation()->getId();
+                    } else {
+                        return $a->getBookedTime() < $b->getBookedTime();
+                    }
+                }
             }
         }
         if ($a->getLastShifter() && $a->getLastShifter()->getId() == $beneficiary->getId()) {
@@ -100,6 +114,20 @@ class ShiftBucket
             $ids[] = $shift->getId();
         }
         return $ids;
+    }
+
+    public function getId(){
+        return min($this->getShiftIds());
+    }
+
+    public function getShiftWithMinId(){
+        $min = $this->shifts->first();
+        foreach ($this->getShifts() as $shift){
+            if ($min->getId() > $shift->getId()) {
+                $min = $shift;
+            }
+        }
+        return $min;
     }
 
     public function getShifterCount()

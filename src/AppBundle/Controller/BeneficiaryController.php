@@ -28,7 +28,8 @@ class BeneficiaryController extends Controller
 {
     private $_current_app_user;
 
-    public function getCurrentAppUser(){
+    public function getCurrentAppUser()
+    {
         if (!$this->_current_app_user){
             $this->_current_app_user = $this->get('security.token_storage')->getToken()->getUser();
         }
@@ -69,6 +70,94 @@ class BeneficiaryController extends Controller
     }
 
     /**
+     * Set as main beneficiary
+     *
+     * @Route("/beneficiary/{id}", name="beneficiary_set_main")
+     * @Method("GET")
+     * @param Beneficiary $beneficiary
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse
+     */
+    public function setAsMainBeneficiaryAction(Beneficiary $beneficiary)
+    {
+        $session = new Session();
+        $member = $beneficiary->getMembership();
+        $this->denyAccessUnlessGranted('edit', $member);
+        $em = $this->getDoctrine()->getManager();
+        $member->setMainBeneficiary($beneficiary);
+        $em->persist($member);
+        $em->flush();
+        $session->getFlashBag()->add('success', 'Le changement de bénéficiaire principal a été effectué');
+        return $this->redirectToShow($member);
+    }
+
+    /**
+     * Detaches a beneficiary entity.
+     *
+     * @Route("/{id}/detach", name="beneficiary_detach")
+     * @Method("POST")
+     * @param Request $request
+     * @param Beneficiary $beneficiary
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse
+     */
+    public function detachBeneficiaryAction(Request $request, Beneficiary $beneficiary)
+    {
+        $session = new Session();
+        $member = $beneficiary->getMembership();
+
+        $this->denyAccessUnlessGranted('edit', $member);
+
+        if ($beneficiary->isMain()) {
+            $session->getFlashBag()->add('error', 'Un bénéficiaire principal ne peut pas être détaché');
+            return $this->redirectToShow($member);
+        }
+
+        $form = $this->createFormBuilder()
+            ->setAction($this->generateUrl('beneficiary_detach', array('id' => $beneficiary->getId())))
+            ->setMethod('POST')
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $em = $this->getDoctrine()->getManager();
+
+            // first we remove the beneficiary from the current member
+            $member->removeBeneficiary($beneficiary);
+            $em->persist($member);
+
+            // check if there is a existing membership with this main beneficiary (artefact ?)
+            $existing_member = $em->getRepository('AppBundle:Membership')->findOneBy(array('mainBeneficiary' => $beneficiary));
+            if ($existing_member) {
+                $new_member = $existing_member;
+                $new_member->setMainBeneficiary($beneficiary);
+            } else {
+                // then we create a new membership
+                $new_member = new Membership();
+                // init member id
+                $m = $em->getRepository('AppBundle:Membership')->findOneBy(array(), array('member_number' => 'DESC'));
+                $mm = 1;
+                if ($m)
+                    $mm = $m->getMemberNumber() + 1;
+                $new_member->setMemberNumber($mm);
+                // set main beneficiary
+                $new_member->setMainBeneficiary($beneficiary);
+            }
+            // init other fields
+            $new_member->setWithdrawn(false);
+            $new_member->setFrozen(false);
+            $new_member->setFrozenChange(false);
+
+            $em->persist($new_member);
+
+            $em->flush();
+
+            $session->getFlashBag()->add('success', 'Le bénéficiaire a été détaché ! Il a maintenant son propre compte.');
+            return $this->redirectToShow($new_member);
+        }
+
+        return $this->redirectToShow($member);
+    }
+
+    /**
      * Deletes a beneficiary entity.
      *
      * @Route("/beneficiary/{id}", name="beneficiary_delete")
@@ -98,7 +187,8 @@ class BeneficiaryController extends Controller
         return $this->redirectToShow($member);
     }
 
-    private function getErrorMessages(Form $form) {
+    private function getErrorMessages(Form $form)
+    {
         $errors = array();
 
         foreach ($form->getErrors() as $key => $error) {
@@ -188,52 +278,5 @@ class BeneficiaryController extends Controller
             return $this->redirectToRoute('member_show', array('member_number' => $member->getMemberNumber()));
         else
             return $this->redirectToRoute('member_show', array('member_number' => $member->getMemberNumber(), 'token' => $user->getTmpToken($session->get('token_key') . $this->getCurrentAppUser()->getUsername())));
-    }
-
-    /**
-     * @Route("/list", name="beneficiary_list")
-     * @Method({"POST"})
-     * @param Request $request
-     * @return \Symfony\Component\HttpFoundation\Response
-     * @Security("has_role('ROLE_USER')")
-     */
-    public function listAction(Request $request){
-
-        $granted = false;
-        if ($this->get('security.authorization_checker')->isGranted('ROLE_USER_MANAGER'))
-            $granted = true;
-        if ($this->getUser()->getBeneficiary() && count($this->getUser()->getBeneficiary()->getOwnedCommissions()))
-            $granted = true;
-        if ($granted && $request->isXmlHttpRequest()){
-            $em = $this->getDoctrine()->getManager();
-            $userRepo = $em->getRepository(Beneficiary::class);
-
-            $string = $request->get('string');
-
-            $rsm = new ResultSetMappingBuilder($em);
-            $rsm->addRootEntityFromClassMetadata('AppBundle:Beneficiary', 'b');
-
-            $query = $em->createNativeQuery('SELECT b.* FROM beneficiary AS b LEFT JOIN fos_user as u ON u.id = b.user_id WHERE LOWER(CONCAT_WS(u.username,u.email,b.lastname,b.firstname)) LIKE :key', $rsm);
-
-            $beneficiaries = $query->setParameter('key', '%' . $string . '%')
-                ->getResult();
-
-            $returnArray = array();
-            foreach ($beneficiaries as $beneficiary){
-                $dead = false;
-                if ($beneficiary->getMembership()->isWithdrawn()){
-                    $dead = true;
-                }
-                if (!$this->get('membership_service')->isUptodate($beneficiary->getMembership())){
-                    $dead = true;
-                }
-                if (!$beneficiary->getMembership()){
-                    $dead = true;
-                }
-                $returnArray[] = array('name' => $beneficiary->getAutocompleteLabelFull() ,'icon' => (!$dead) ? $request->getUriForPath('/bundles/app/img/cancel.svg') : '');
-            }
-            return new JsonResponse($returnArray);
-        }
-        return new Response("Ajax only",400);
     }
 }

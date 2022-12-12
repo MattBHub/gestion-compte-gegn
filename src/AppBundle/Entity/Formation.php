@@ -10,6 +10,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
  * Formation
  *
  * @ORM\Table(name="formation")
+ * @ORM\HasLifecycleCallbacks()
  * @ORM\Entity(repositoryClass="AppBundle\Repository\FormationRepository")
  * @UniqueEntity(fields={"name"}, message="Ce nom est déjà utilisé par une autre formation")
  */
@@ -24,11 +25,53 @@ class Formation extends Group
      */
     protected $id;
 
+    // private $name;  // from Group
+    // private $roles;  // from Group
+
+    /**
+     * @var string
+     * 
+     * @ORM\Column(name="description", type="text", nullable=true)
+     */
+    private $description;
+
     /**
      * Many Formations have Many Beneficiaries.
      * @ORM\ManyToMany(targetEntity="Beneficiary", mappedBy="formations")
      */
     private $beneficiaries;
+
+    /**
+     * @var \DateTime
+     *
+     * @ORM\Column(name="created_at", type="datetime")
+     */
+    private $createdAt;
+
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct(null);
+        $this->beneficiaries = new \Doctrine\Common\Collections\ArrayCollection();
+    }
+
+    /**
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->getName();
+    }
+
+    /**
+     * @ORM\PrePersist
+     */
+    public function setCreatedAtValue()
+    {
+        $this->createdAt = new \DateTime();
+    }
 
     /**
      * Get id
@@ -40,17 +83,46 @@ class Formation extends Group
         return $this->id;
     }
 
-    public function __toString()
-    {
-        return $this->getName();
-    }
     /**
-     * Constructor
+     * Get description
+     * 
+     * @return string
      */
-    public function __construct()
+    public function getDescription(): string
     {
-        parent::__construct(null);
-        $this->beneficiaries = new \Doctrine\Common\Collections\ArrayCollection();
+        return $this->description ? $this->description : '';
+    }
+
+    /**
+     * Set description
+     * 
+     * @param string $description
+     * @return Formation
+     */
+    public function setDescription(string $description): Formation
+    {
+        $this->description = $description;
+        return $this;
+    }
+
+    /**
+     * Get roles
+     *
+     * @return array
+     */
+    public function getRoles()
+    {
+        return $this->roles;
+    }
+
+    /**
+     * Get createdAt
+     *
+     * @return \DateTime
+     */
+    public function getCreatedAt()
+    {
+        return $this->createdAt;
     }
 
     /**
@@ -86,5 +158,4 @@ class Formation extends Group
     {
         return $this->beneficiaries;
     }
-
 }

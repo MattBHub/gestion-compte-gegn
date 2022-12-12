@@ -28,9 +28,9 @@ class FixTimeLogCommand extends ContainerAwareCommand
         foreach ($members as $member) {
             if ($member->getFirstShiftDate()) {
 
-                $lastCycleShifts = $member->getShiftsOfCycle(-1, true)->toArray();
-                $currentCycleShifts = $member->getShiftsOfCycle(0, true)->toArray();
-                $shifts = array_merge($lastCycleShifts, $currentCycleShifts);
+                $previous_cycle_start = $this->get('membership_service')->getStartOfCycle($member, -1);
+                $current_cycle_end = $this->get('membership_service')->getEndOfCycle($member, 0);
+                $shifts = $em->getRepository('AppBundle:Shift')->findShiftsForMembership($member, $previous_cycle_start, $current_cycle_end, true);
                 foreach ($shifts as $shift) {
 
                     $logs = $member->getTimeLogs()->filter(function ($log) use ($shift) {
@@ -55,7 +55,8 @@ class FixTimeLogCommand extends ContainerAwareCommand
         $log->setMembership($membership);
         $log->setTime($shift->getDuration());
         $log->setShift($shift);
-        $log->setDate($shift->getStart());
+        $log->setCreatedAt($shift->getStart());
+        $log->setType(1);
         $log->setDescription("Créneau réalisé");
         $em->persist($log);
     }

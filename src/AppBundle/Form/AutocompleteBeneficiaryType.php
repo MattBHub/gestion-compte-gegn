@@ -20,15 +20,11 @@ class AutocompleteBeneficiaryType extends AbstractType
         $this->transformer = $transformer;
     }
 
-    public function getBlockPrefix()
-    {
-        return 'autocomplete_beneficiary';
-    }
-
     public function configureOptions(OptionsResolver $resolver)
     {
         $resolver->setDefaults([
-            'invalid_message' => 'The selected data does not match any beneficiary',
+            'block_prefix' => 'autocomplete_beneficiary',
+            'attr' => ['class' => 'autocomplete'],
         ]);
     }
 

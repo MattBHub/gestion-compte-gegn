@@ -28,15 +28,10 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
-use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\EmailType;
-use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -56,7 +51,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
  * User controller.
  *
  * @Route("admin")
- * @Security("has_role('ROLE_USER_MANAGER')")
+ * @Security("has_role('ROLE_ADMIN_PANEL')")
  */
 class AdminController extends Controller
 {
@@ -70,92 +65,6 @@ class AdminController extends Controller
     public function indexAction()
     {
         return $this->render('admin/index.html.twig');
-    }
-
-    /**
-     * @Route("/search", name="search")
-     * @Method("POST")
-     * @Security("has_role('ROLE_ADMIN')")
-     */
-    public function searchAction(Request $request)
-    {
-        if ($request->isXMLHttpRequest()) {
-            $key = preg_replace('/\s+/', '', $request->get('key'));
-            $return = array();
-
-            $em = $this->getDoctrine()->getManager();
-
-            $rsm = new ResultSetMappingBuilder($em);
-            $rsm->addRootEntityFromClassMetadata('AppBundle:Beneficiary', 'b');
-
-            $query = $em->createNativeQuery('SELECT b.* FROM beneficiary AS b LEFT JOIN fos_user as u ON u.id = b.user_id WHERE LOWER(CONCAT(u.username,u.email,b.lastname,b.firstname,b.lastname)) LIKE :key', $rsm);
-
-            $beneficiaries = $query->setParameter('key', '%' . $key . '%')
-                ->getResult();
-
-            foreach ($beneficiaries as $beneficiary) {
-                if ($beneficiary->getUser()) {
-                    $return[] = array(
-                        'name' => $beneficiary->getAutocompleteLabelFull(),
-                        'icon' => null,
-                        'url' => $this->generateUrl('member_show', array('member_number' => $beneficiary->getMembership()->getMemberNumber())),
-                        'id' => 'B'.$beneficiary->getId()
-                    );
-                }
-            }
-
-            $commissions = $em->getRepository(Commission::class)->findByString($key);
-            /** @var Commission $commission */
-            foreach ($commissions as $commission){
-                $return[] = array(
-                    'name' => 'COMMISSION : '.$commission->getName(),
-                    'icon' => null,
-                    'url' => $this->generateUrl('commission_edit', array('id' => $commission->getId())),
-                    'id' => 'C'.$commission->getId()
-                );
-            }
-
-            $admin_actions = array();
-            $admin_actions[] = array(
-                'name' => 'ACTION : liste des codes',
-                'icon' => null,
-                'url' => $this->generateUrl('codes_list'),
-                'id' => 'A'.'CODES'
-            );
-            $admin_actions[] = array(
-                'name' => 'ACTION : contenus dynamiques',
-                'icon' => null,
-                'url' => $this->generateUrl('dynamic_content_list'),
-                'id' => 'A'.'DYNAMIC_CONTENT'
-            );
-            $admin_actions[] = array(
-                'name' => 'ACTION : adhésions - réadhésions',
-                'icon' => null,
-                'url' => $this->generateUrl('registrations'),
-                'id' => 'A'.'REGISTRATION_LIST'
-            );
-            $admin_actions[] = array(
-                'name' => 'ACTION : paiements helloasso',
-                'icon' => null,
-                'url' => $this->generateUrl('helloasso_payments'),
-                'id' => 'A'.'HELLOASSO_LIST'
-            );
-            $admin_actions[] = array(
-                'name' => 'ACTION : helloasso explorer',
-                'icon' => null,
-                'url' => $this->generateUrl('helloasso_browser'),
-                'id' => 'A'.'HELLOASSO_BROWSER'
-            );
-            foreach ($admin_actions as $action){
-              if (strpos($action['name'],$key)){
-                  $return[] = $action;
-              }
-            }
-            
-            return new JsonResponse(array('count' => count($return), 'data' => array_values($return)));
-        }
-
-        return new Response('This is not ajax!', 400);
     }
 
     /**
@@ -179,9 +88,9 @@ class AdminController extends Controller
         $page = 1;
         $order = 'ASC';
         $sort = 'o.member_number';
+        $limit = 25;
 
         if ($form->isSubmitted() && $form->isValid()) {
-
             if ($form->get('page')->getData() > 0) {
                 $page = $form->get('page')->getData();
             }
@@ -191,24 +100,16 @@ class AdminController extends Controller
             if ($form->get('dir')->getData()) {
                 $order = $form->get('dir')->getData();
             }
-
             $formHelper->processSearchFormData($form, $qb);
-
         } else {
             $form->get('sort')->setData($sort);
             $form->get('dir')->setData($order);
         }
-
         $formHelper->processSearchQueryData($request->getQueryString(), $qb);
 
-        $limit = 25;
-        $qb2 = clone $qb;
-        $max = $qb2->select('count(DISTINCT o.id)')->getQuery()->getSingleScalarResult();
-        $nb_of_pages = intval($max / $limit);
-        $nb_of_pages += (($max % $limit) > 0) ? 1 : 0;
-
-
         $qb = $qb->orderBy($sort, $order);
+
+        // Export CSV
         if ($action == "csv") {
             $members = $qb->getQuery()->getResult();
             $return = '';
@@ -229,6 +130,7 @@ class AdminController extends Controller
                 'Content-Type' => 'application/force-download; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="emails_' . date('dmyhis') . '.csv"'
             ));
+        // Envoyer un mail
         } else if ($action === "mail") {
             return $this->redirectToRoute('mail_edit', [
                 'request' => $request
@@ -236,6 +138,9 @@ class AdminController extends Controller
         } else {
             $qb = $qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit);
             $members = new Paginator($qb->getQuery());
+            $max = sizeof($members);
+            $nb_of_pages = intval($max / $limit);
+            $nb_of_pages += (($max % $limit) > 0) ? 1 : 0;
         }
 
         return $this->render('admin/user/list.html.twig', array(
@@ -246,7 +151,6 @@ class AdminController extends Controller
             'nb_of_pages' => $nb_of_pages
         ));
     }
-
 
     /**
      * Lists all users with ROLE_ADMIN.
@@ -278,30 +182,65 @@ class AdminController extends Controller
     }
 
     /**
+     * Lists all roles.
+     *
+     * @param Request $request
+     * @return Response
+     * @Route("/roles", name="roles_list")
+     * @Method({"GET"})
+     * @Security("has_role('ROLE_ADMIN')")
+     */
+    public function rolesListAction(Request $request)
+    {
+        $em = $this->getDoctrine()->getManager();
+
+        $roles_hierarchy = $this->container->getParameter('security.role_hierarchy.roles');
+        $roles_list = array_merge(["ROLE_USER"], array_keys($roles_hierarchy));
+        $roles_list_enriched = array();
+
+        foreach ($roles_list as $role_code) {
+            $role = array();
+            $role_icon_key = strtolower($role_code) . "_icon";
+            $role_name_key = strtolower($role_code) . "_name";
+            $role["code"] = $role_code;
+            $role["icon"] = $this->get("twig")->getGlobals()[strtolower($role_icon_key)] ?? "";
+            $role["name"] = $this->get("twig")->getGlobals()[strtolower($role_name_key)] ?? "";
+            $role["children"] = in_array($role_code, array_keys($roles_hierarchy)) ? implode(", ", $roles_hierarchy[$role_code]) : "";
+            $role["user_count"] = count($em->getRepository("AppBundle:User")->findByRole($role_code));
+            array_push($roles_list_enriched, $role);
+        }
+
+        return $this->render('admin/user/roles_list.html.twig', array(
+            'roles' => $roles_list_enriched,
+        ));
+    }
+
+    /**
      * Widget generator
      *
      * @Route("/widget", name="widget_generator")
      * @Method({"GET","POST"})
-     * @Security("has_role('ROLE_ADMIN')")
+     * @Security("has_role('ROLE_PROCESS_MANAGER')")
      */
     public function widgetBuilderAction(Request $request){
         $form = $this->createFormBuilder()
             ->add('job', EntityType::class, array(
-                'label' => 'Poste',
+                'label' => 'Quel poste ?',
                 'class' => 'AppBundle:Job',
-                'choice_label'=> 'name',
-                'multiple'     => false,
+                'choice_label' => 'name',
+                'multiple' => false,
                 'required' => true
             ))
-            ->add('display_end', CheckboxType::class, array('required' => false, 'label' => 'Afficher l\'heure de fin'))
-            ->add('display_on_empty', CheckboxType::class, array('required' => false, 'label' => 'Afficher les créneaux vides'))
-            ->add('generate', SubmitType::class, array('label' => 'generer'))
+            ->add('display_end', CheckboxType::class, array('required' => false, 'label' => 'Afficher l\'heure de fin ?'))
+            ->add('display_on_empty', CheckboxType::class, array('required' => false, 'label' => 'Afficher les créneaux vides ?'))
+            ->add('title', CheckboxType::class, array('required' => false, 'data' => true, 'label' => 'Afficher le titre ?'))
+            ->add('generate', SubmitType::class, array('label' => 'Générer'))
             ->getForm();
 
         if ($form->handleRequest($request)->isValid()) {
             $data = $form->getData();
             return $this->render('admin/widget/generate.html.twig', array(
-                'query_string' => 'job_id='.$data['job']->getId().'&display_end='.$data['display_end'].'&display_on_empty='.$data['display_on_empty'],
+                'query_string' => 'job_id='.$data['job']->getId().'&display_end='.($data['display_end'] ? 1 : 0).'&display_on_empty='.($data['display_on_empty'] ? 1 : 0).'&title='.($data['title'] ? 1 : 0),
                 'form' => $form->createView(),
             ));
         }
@@ -322,9 +261,13 @@ class AdminController extends Controller
     {
         $form = $this->createFormBuilder()
             ->add('submitFile', FileType::class, array('label' => 'File to Submit'))
-            ->add('delimiter', ChoiceType::class, array('label' => 'delimiter','choices'  => array(
-                'virgule ,' => ',',
-                'point virgule ;' => ';',)))
+            ->add('delimiter', ChoiceType::class, array(
+                'label' => 'delimiter',
+                'choices'  => array(
+                    'virgule ,' => ',',
+                    'point virgule ;' => ';',
+                )
+            ))
             //->add('persist', CheckboxType::class, array('required' => false, 'label' => 'Sauver en base'))
             //->add('compute', SubmitType::class, array('label' => 'Importer les données'))
             ->getForm();

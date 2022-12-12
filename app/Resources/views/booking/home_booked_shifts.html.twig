@@ -1,27 +1,61 @@
-{% if  app.user.beneficiary %}
+{% if app.user.beneficiary %}
     {% set beneficiary = app.user.beneficiary %}
     {% set member = beneficiary.membership %}
-    <ul class="collapsible expandable">
+
+    {% if member.isExemptedFromShifts() %}
+        {% set firstValidMembershipShiftExemption = member.getValidMembershipShiftExemptions().first %}
+        <div class="card-panel teal white-text">
+            <i class="material-icons small left">beach_access</i>
+            <strong>{% if member.beneficiaries | length %}Votre{% else %}Ton{% endif %} compte est exempté de créneau !</strong>
+            <br />
+            ({{ firstValidMembershipShiftExemption.shiftExemption }}) jusqu'au {{ firstValidMembershipShiftExemption.end | date_fr_full }}
+        </div>
+    {% endif %}
+
+    <ul class="collapsible collapsible-expandable">
+        {% if use_fly_and_fixed %}
+            <li class="active">
+                <div class="collapsible-header">
+                    <i class="material-icons">event</i>Créneau fixe
+                </div>
+                <div class="collapsible-body">
+                    {% if period_positions %}
+                        <div class="row">
+                            {% for period_position in period_positions %}
+                                <div class="col s12 m6 l4">
+                                    {% include "user/_partial/period_position_card.html.twig" with { period_position: period_position } %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>Pas de créneau fixe</p>
+                    {% endif %}
+                </div>
+            </li>
+        {% endif %}
         {% if (member.reservedShifts | length) > 0 %}
             <li class="active">
-                <div class="collapsible-header active"><i class="material-icons">event_note</i>Mes créneaux à accepter</div>
+                <div class="collapsible-header">
+                    <i class="material-icons">event_note</i>{% if member.beneficiaries | length > 1 %}Vos{% else %}Mes{% endif %} créneaux à accepter
+                </div>
                 <div class="collapsible-body">
                     {% for shift in member.reservedShifts %}
-                        {% include "booking/_partial/reserved_shift.html.twig" with { shift: shift  } %}
+                        {% include "booking/_partial/reserved_shift_card.html.twig" with { shift: shift } %}
                     {% endfor %}
                 </div>
             </li>
         {% endif %}
-        {% for cycle in 0..1 %}
-            {% set shiftsOfCycle = member.getShiftsOfCycle(cycle) %}
-            {% if shiftsOfCycle | length > 0 %}
+        {% for cycle, shiftsOfCycle in shiftsByCycle %}
+            {% if (cycle in [0, 1]) and (shiftsOfCycle | length > 0) %}
                 <li class="active">
-                    <div class="collapsible-header active"><i class="material-icons">date_range</i>Mes créneaux pour le cycle {% if cycle == 0 %}courant{% else %}suivant{% endif %}  (du {{ member.startOfCycle(cycle) | date_fr_long }} au {{ member.endOfCycle(cycle) | date_fr_long }})</div>
+                    <div class="collapsible-header">
+                        <i class="material-icons">date_range</i>{% if member.beneficiaries | length > 1 %}Vos{% else %}Mes{% endif %} créneaux pour le cycle {% if cycle == 0 %}courant{% else %}suivant{% endif %} (du {{ membership_service.startOfCycle(member,cycle) | date_fr_long }} au {{ membership_service.endOfCycle(member,cycle) | date_fr_long }})
+                    </div>
                     <div class="collapsible-body">
                         <div class="row">
                             {% for shift in shiftsOfCycle %}
-                                <div class="col m6 s12 {% if shiftsOfCycle | length == 1 %}push-m3{% endif %}">
-                                    {% include "booking/_partial/home_shift.html.twig" with { shift: shift  } %}
+                                <div class="col s12 m6 l4 {% if shiftsOfCycle | length == 1 %}push-m3{% endif %}">
+                                    {% include "booking/_partial/home_shift_card.html.twig" with { shift: shift } %}
                                 </div>
                             {% endfor %}
                         </div>
@@ -29,41 +63,25 @@
                 </li>
             {% endif %}
         {% endfor %}
-        {% if (member.getFutureRebookedShifts() | length) != 0 %}
-            <li class="active">
-                <div class="collapsible-header active"><i class="material-icons">event_busy</i>Mes créneaux annulés et repris par un autre bénévole</div>
-                <div class="collapsible-body">
-                    {% for bookedshift in member.getFutureRebookedShifts() %}
-                        <div class="col m6 s12 {% if (member.getFutureRebookedShifts() | length) < 2 %}push-m3{% endif %}">
-                            <div class="card green lighten-5">
-                                <div class="card-content green-text">
-                                    <span class="card-title">{{ bookedshift.start|date_fr_long }}</span>
-                                    <p>De {{ bookedshift.start|date('H:i') }} à {{ bookedshift.end|date('H:i') }}</p>
-                                    <p>Créneau repris</p>
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            </li>
-        {% endif %}
         {% if (shift_service.hasCycle(member, -1) or shift_service.hasCycle(member, -2)) %}
-            <li >
-                <div class="collapsible-header"><i class="material-icons">event_available</i>Mes créneaux passés</div>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons">event_available</i>{% if member.beneficiaries | length > 1 %}Vos{% else %}Mes{% endif %} créneaux passés
+                </div>
                 <div class="collapsible-body">
                     {# Shift history #}
                     <div class="row">
                         {% for cycle in -1..-2 %}
                             {% if shift_service.hasCycle(member, cycle) %}
-                                <div class="col m6 s12">
-                                    {% set previousShifts = member.getShiftsOfCycle(cycle) %}
-                                    <h6>Cycle précédent (du {{ member.startOfCycle(cycle) | date('d/m/y') }} au {{ member.endOfCycle(cycle) | date('d/m/y') }})</h6>
+                                <div class="col s12 m6 l4">
+                                    {% set previousShifts = shiftsByCycle[cycle] %}
+                                    <h6>Cycle précédent (du {{ membership_service.startOfCycle(member,cycle) | date('d/m/y') }} au {{ membership_service.endOfCycle(member,cycle) | date('d/m/y') }})</h6>
                                     {% if previousShifts|length == 0 %}
                                         Pas de créneau
                                     {% endif %}
                                     {% for shift in previousShifts %}
-                                        <div class="col m12 s12">
-                                            {% include "user/_partial/mini_shift.html.twig" with { shift: shift  } %}
+                                        <div class="col s12 m12">
+                                            {% include "user/_partial/mini_shift_card.html.twig" with { shift: shift } %}
                                         </div>
                                     {% endfor %}
                                 </div>
@@ -75,4 +93,3 @@
         {% endif %}
     </ul>
 {% endif %}
-

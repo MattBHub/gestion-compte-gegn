@@ -81,7 +81,7 @@ class CodeVoter extends Voter
                 return $this->canAdd($code, $user);
             case self::OPEN:
             case self::EDIT:
-                if ($this->decisionManager->decide($token, array('ROLE_SUPER_ADMIN'))) {
+                if ($this->decisionManager->decide($token, array('ROLE_ADMIN'))) {
                     return true;
                 }
             case self::DELETE:
@@ -119,24 +119,23 @@ class CodeVoter extends Voter
         }
 
         if ($user->getBeneficiary()) {
-            if ($this->container->get("shift_service")->isBeginner($user->getBeneficiary())) // not for beginner
+            if ($this->container->get("shift_service")->isBeginner($user->getBeneficiary())) { // not for beginner
                 return false;
-            $shifts = $user->getBeneficiary()->getMembership()->getShiftsOfCycle(0);
-            $y = new \DateTime('Yesterday');
-            $y->setTime(23, 59, 59);
-            $some_time_ago = new \DateTime();
-            $in_some_time = new \DateTime();
-            $some_time_ago->sub(new \DateInterval("PT2H")); //time - 120min TODO put in conf
-            $in_some_time->add(new \DateInterval("PT1H")); //time + 60min TODO put in conf
-
-            // display code si on est à moins d'1h du début et moins de 2h après la fin
-            foreach ($shifts as $shift) {
-                if (($shift->getStart() < $in_some_time) && // dans une heure il sera commencé
-                    $shift->getStart() > $y && // le début est aujourd'hui (après hier 23h59:59)
-                    ($shift->getEnd() > $some_time_ago)) { // il y a deux heure il n'était pas fini
-                    return true;
-                }
             }
+
+            $start_after = new \DateTime('Yesterday');
+            $start_after->setTime(23, 59, 59);
+            $end_after = new \DateTime();
+            $end_after->sub(new \DateInterval("PT2H")); //time - 120min TODO put in conf
+            $start_before = new \DateTime();
+            $start_before->add(new \DateInterval("PT1H")); //time + 60min TODO put in conf
+
+            return $this->container->get("shift_service")->isBeneficiaryHasShifts($user->getBeneficiary(),
+                $start_after,
+                $start_before,
+                $end_after,
+                true
+            );
         }
 
         return false;

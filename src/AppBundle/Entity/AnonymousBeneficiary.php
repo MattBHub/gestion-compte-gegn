@@ -66,7 +66,6 @@ class AnonymousBeneficiary
      */
     private $mode;
 
-
     /**
      * @ORM\ManyToOne(targetEntity="User")
      * @ORM\JoinColumn(name="registrar_id", referencedColumnName="id", onDelete="SET NULL")
@@ -78,15 +77,22 @@ class AnonymousBeneficiary
      *
      * @ORM\Column(name="created_at", type="datetime")
      */
-    private $created_at;
-
+    private $createdAt;
 
     /**
      * @var \DateTime
      *
      * @ORM\Column(name="recall_date", type="datetime", nullable=true)
      */
-    private $recall_date;
+    private $recallDate;
+
+    /**
+     * @ORM\PrePersist
+     */
+    public function setCreatedAtValue()
+    {
+        $this->createdAt = new \DateTime();
+    }
 
     /**
      * Get id
@@ -181,24 +187,17 @@ class AnonymousBeneficiary
     }
 
     /**
-     * @ORM\PrePersist
-     */
-    public function setCreatedAtValue()
-    {
-        $this->created_at = new \DateTime();
-    }
-
-    /**
-     * Get created_at
+     * Get createdAt
      *
      * @return \DateTime
      */
-    public function getCreatedAt(){
-        return $this->created_at;
+    public function getCreatedAt()
+    {
+        return $this->createdAt;
     }
 
     /**
-     * Set recall_date
+     * Set recallDate
      *
      * @param \DateTime $date
      *
@@ -206,18 +205,19 @@ class AnonymousBeneficiary
      */
     public function setRecallDate(\DateTime $date)
     {
-        $this->recall_date = $date;
+        $this->recallDate = $date;
 
         return $this;
     }
 
     /**
-     * Get recall_date
+     * Get recallDate
      *
      * @return \DateTime
      */
-    public function getRecallDate(){
-        return $this->recall_date;
+    public function getRecallDate()
+    {
+        return $this->recallDate;
     }
 
     /**
@@ -321,8 +321,6 @@ class AnonymousBeneficiary
                     ->atPath('mode')
                     ->addViolation();
             }
-
         }
-
     }
 }

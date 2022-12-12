@@ -1,7 +1,16 @@
 {% extends 'layout.html.twig' %}
 
+{% block title %}Liste des dernières adhésions - {{ site_name }}{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{{ path('homepage') }}"><i class="material-icons">home</i></a><i class="material-icons">chevron_right</i>
+<a href="{{ path('admin') }}"><i class="material-icons">build</i>&nbsp;Administration</a><i class="material-icons">chevron_right</i>
+<i class="material-icons">attach_money</i>&nbsp;Liste des dernières adhésions
+{% endblock %}
+
 {% block content %}
-    <h4 class="">Liste des dernières adhésions / ré-adhésions</h4>
+    <h4>Liste des dernières adhésions / ré-adhésions</h4>
+
     <h5>par date de saisie</h5>
 
     {% if is_granted("ROLE_FINANCE_MANAGER") %}
@@ -32,7 +41,7 @@
         </ul>
 
         <h5>Total sur toute la période : {{ grand_total['grand_total'] }}€</h5>
-        <ul class="collapsible" data-collapsible="accordion">
+        <ul class="collapsible">
             <li>
                 <div class="row">
                     {% for i in 1..6 %}
@@ -67,7 +76,7 @@
                 {% set date = (registration.date | date('d F Y')) %}
                 {% set datekey = (registration.date | date('Y-m-d')) %}
                 <h5>{{ registration.date | date_fr_long }}</h5>
-                <ul class="collapsible" data-collapsible="accordion">
+                <ul class="collapsible">
             {% endif %}
             <li class="">
                 <div class="collapsible-header {% if registration.membership is defined and registration.membership and (registration.membership.registrations | length) > 1 %}teal{% elseif registration.type == constant('TYPE_ANONYMOUS', registration) %}orange{% else %}indigo{% endif %} lighten-4">
@@ -128,7 +137,9 @@
                             {% else %}
                                 Jamais relancé
                             {% endif %}&nbsp;
-                            <a href="{{ path('user_quick_new_recall',{'id' : registration.id[2:]}) }}" class="btn waves-effect waves-light green darken-2"><i class="material-icons left">redo</i> Relancer</a>
+                            <a href="{{ path('pre_user_recall', { 'id' : registration.id[2:] }) }}" class="btn waves-effect waves-light green darken-2">
+                                <i class="material-icons left">redo</i>Relancer
+                            </a>
                         </div>
                     </div>
                 {% endif %}
@@ -182,5 +193,4 @@
             {% endif %}
         </ul>
     {% endif %}
-
 {% endblock %}

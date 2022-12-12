@@ -1,7 +1,7 @@
-{% if codes | length == 0%}
+{% if codes | length == 0 %}
     Auncun code en cours... c'est gênant ?
 {% else %}
-    {% if codes | length == 1%}
+    {% if codes | length == 1 %}
         <h4 class="">Code en cours de validité</h4>
         <div class="row">
             <div class="col s12">
@@ -22,12 +22,12 @@
         <h4 class="">Liste des codes {% if not is_granted("ROLE_ADMIN") %}en cours{% endif %}</h4>
         <table>
             <thead>
-            <tr>
-                <th>Code</th>
-                <th>Créé le</th>
-                <th>Membre</th>
-                <th></th>
-            </tr>
+                <tr>
+                    <th>Code</th>
+                    <th>Créé le</th>
+                    <th>Membre</th>
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody>
             {% for code in codes %}

@@ -311,13 +311,6 @@ class User extends BaseUser
         return $this->annotations;
     }
 
-    public function getAutocompleteLabel(){
-        if ($this->getBeneficiary())
-            return '#'.$this->getId().' '.$this->getFirstname().' '.$this->getLastname();
-        else
-            return '#'.$this->getId().' '.$this->getUsername();
-    }
-
     /**
      * @return Beneficiary
      */
@@ -332,6 +325,18 @@ class User extends BaseUser
     public function setBeneficiary($beneficiary)
     {
         $this->beneficiary = $beneficiary;
+    }
+
+    /**
+     * @return string
+     */
+    public function getBeneficiaryStringWithLink()
+    {
+        if ($this->getBeneficiary()) {
+            return '<a href="{{ path("member_show", { \'member_number\': '. $this->getBeneficiary()->getMembership()->getMemberNumber() .' }) }}">'. $this->getBeneficiary() .'</a>';
+        } else {
+            return $this;
+        }
     }
 
     /**

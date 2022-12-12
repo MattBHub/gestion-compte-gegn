@@ -30,6 +30,19 @@ services:
         resource: '../../src/AppBundle/Controller'
         public: true
         tags: ['controller.service_arguments']
+    AppBundle\Controller\DefaultController:
+        arguments:
+            - '%swipe_card_logging%'
+            - '%swipe_card_logging_anonymous%'
+    AppBundle\Controller\AmbassadorController:
+        arguments:
+            - "%time_after_which_members_are_late_with_shifts%"
+    AppBundle\Controller\BookingController:
+        arguments:
+            - "%use_fly_and_fixed%"
+    AppBundle\Controller\ShiftController:
+        arguments:
+            - "%use_fly_and_fixed%"
     AppBundle\Helper\:
         resource: '../../src/AppBundle/Helper'
         arguments: ['@service_container']
@@ -104,6 +117,8 @@ services:
                 - { name: kernel.event_listener, event: shift.dismissed, method: onShiftDismissed }
                 - { name: kernel.event_listener, event: shift.freed, method: onShiftFreed }
                 - { name: kernel.event_listener, event: shift.deleted, method: onShiftDeleted }
+                - { name: kernel.event_listener, event: shift.validated, method: onShiftValidated }
+                - { name: kernel.event_listener, event: shift.invalidated, method: onShiftInvalidated }
                 - { name: kernel.event_listener, event: member.cycle.end, method: onMemberCycleEnd }
     emailing_event_listener:
             class:  AppBundle\EventListener\EmailingEventListener
@@ -154,7 +169,18 @@ services:
                 - "%due_duration_by_cycle%"
                 - "%min_shift_duration%"
                 - "%new_users_start_as_beginner%"
-                - "%unlimited_book_duration%"
+                - "%allow_extra_shifts%"
+                - "%max_time_in_advance_to_book_extra_shifts%"
+                - "%forbid_shift_overlap_time%"
+                - '@beneficiary_service'
+                - '@membership_service'
+
+    beneficiary_service:
+            class:  AppBundle\Service\BeneficiaryService
+            public: true
+            arguments:
+                - "@doctrine.orm.entity_manager"
+                - '@membership_service'
 
     logger.user_processor:
             class: AppBundle\Monolog\MonologUserProcessor
@@ -196,6 +222,8 @@ services:
             arguments:
                 - "@doctrine.orm.entity_manager"
                 - "%registration_duration%"
+                - "%registration_every_civil_year%"
+                - "%cycle_type%"
 
     event_service:
             class: AppBundle\Service\EventService

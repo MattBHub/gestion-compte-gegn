@@ -11,6 +11,8 @@ use AppBundle\Event\ShiftBookedEvent;
 use AppBundle\Event\ShiftDeletedEvent;
 use AppBundle\Event\ShiftDismissedEvent;
 use AppBundle\Event\ShiftFreedEvent;
+use AppBundle\Event\ShiftValidatedEvent;
+use AppBundle\Event\ShiftInvalidatedEvent;
 use Doctrine\ORM\EntityManager;
 use Monolog\Logger;
 use Symfony\Component\DependencyInjection\Container;
@@ -23,6 +25,7 @@ class TimeLogEventListener
     protected $due_duration_by_cycle;
     protected $cycle_duration;
     protected $registration_duration;
+    protected $maxTimeAtEndOfShift ;
 
     public function __construct(EntityManager $entityManager, Logger $logger, Container $container)
     {
@@ -32,6 +35,8 @@ class TimeLogEventListener
         $this->due_duration_by_cycle = $this->container->getParameter('due_duration_by_cycle');
         $this->cycle_duration = $this->container->getParameter('cycle_duration');
         $this->registration_duration = $this->container->getParameter('registration_duration');
+        $this->use_card_reader_to_validate_shifts = $this->container->getParameter('use_card_reader_to_validate_shifts');
+        $this->maxTimeAtEndOfShift = $this->container->getParameter('max_time_at_end_of_shift');
     }
 
     /**
@@ -42,8 +47,34 @@ class TimeLogEventListener
     public function onShiftBooked(ShiftBookedEvent $event)
     {
         $this->logger->info("Time Log Listener: onShiftBooked");
-        $shift = $event->getShift();
-        $this->createShiftLog($shift);
+        if (!$this->use_card_reader_to_validate_shifts) {
+            $shift = $event->getShift();
+            $this->createShiftLog($shift);
+        }
+    }
+
+    /**
+     * @param ShiftValidatedEvent $event
+     * @throws \Doctrine\ORM\ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function onShiftValidated(ShiftValidatedEvent $event)
+    {
+        $this->logger->info("Time Log Listener: onShiftValidated");
+        if ($this->use_card_reader_to_validate_shifts) {
+            $shift = $event->getShift();
+            $this->createShiftLog($shift);
+        }
+    }
+
+    /**
+     * @param ShiftInvalidatedEvent $event
+     * @throws \Doctrine\ORM\ORMException
+     */
+    public function onShiftInvalidated(ShiftInvalidatedEvent $event)
+    {
+        $this->logger->info("Time Log Listener: onShiftInvalidated");
+        $this->deleteShiftLogs($event->getShift(), $event->getMembership());
     }
 
     /**
@@ -95,11 +126,13 @@ class TimeLogEventListener
         $registrationEnd = clone $member->getLastRegistration()->getDate();
         $registrationEnd->modify('+'.$this->registration_duration);
         $registrationEnd->modify('+'.$this->cycle_duration);
-        
+
         if ($date > $registrationEnd) {
-            $this->createRegistrationExpiredLog($member,$date);
+            $this->createRegistrationExpiredLog($member);
         } else if ($member->getFrozen()) {
-            $this->createFrozenLog($member,$date);
+            $this->createFrozenLog($member);
+        } else if ($member->isExemptedFromShifts($date)) {
+            $this->createExemptedLog($member);
         } else {
             $this->createCycleBeginningLog($member, $date);
         }
@@ -112,7 +145,10 @@ class TimeLogEventListener
 
         $dispatcher = $this->container->get('event_dispatcher');
         if (!$member->getFrozen()) {
-            $dispatcher->dispatch(MemberCycleStartEvent::NAME, new MemberCycleStartEvent($member, $date));
+            $current_cycle_start = $this->container->get('membership_service')->getStartOfCycle($member, 0);
+            $current_cycle_end = $this->container->get('membership_service')->getEndOfCycle($member, 0);
+            $currentCycleShifts = $this->em->getRepository('AppBundle:Shift')->findShiftsForMembership($member, $current_cycle_start, $current_cycle_end, true);
+            $dispatcher->dispatch(MemberCycleStartEvent::NAME, new MemberCycleStartEvent($member, $date, $currentCycleShifts));
         }
     }
 
@@ -127,7 +163,7 @@ class TimeLogEventListener
         $log->setMembership($shift->getShifter()->getMembership());
         $log->setTime($shift->getDuration());
         $log->setShift($shift);
-        $log->setDate($shift->getStart());
+        $log->setCreatedAt($shift->getStart());
         $log->setType(TimeLog::TYPE_SHIFT);
         $this->em->persist($log);
         $this->em->flush();
@@ -160,16 +196,17 @@ class TimeLogEventListener
         $log = new TimeLog();
         $log->setMembership($membership);
         $log->setTime(-1 * $this->due_duration_by_cycle);
-        $log->setDate($date);
         $log->setType(TimeLog::TYPE_CYCLE_END);
         $this->em->persist($log);
 
         $counter_today = $membership->getTimeCount($date);
-        if ($counter_today > $this->due_duration_by_cycle) { //surbook
+
+        $allowed_cumul = $this->maxTimeAtEndOfShift;
+
+        if ($counter_today > ($this->due_duration_by_cycle + $allowed_cumul)) { //surbook
             $log = new TimeLog();
             $log->setMembership($membership);
-            $log->setTime(-1 * ($counter_today - $this->due_duration_by_cycle));
-            $log->setDate($date);
+            $log->setTime(-1 * ($counter_today - ($this->due_duration_by_cycle + $allowed_cumul)));
             $log->setType(TimeLog::TYPE_CYCLE_END_REGULATE_OPTIONAL_SHIFTS);
             $this->em->persist($log);
         }
@@ -178,16 +215,14 @@ class TimeLogEventListener
 
     /**
      * @param Membership $membership
-     * @param \DateTime $date
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
-    private function createFrozenLog(Membership $membership, \DateTime $date)
+    private function createFrozenLog(Membership $membership)
     {
         $log = new TimeLog();
         $log->setMembership($membership);
         $log->setTime(0);
-        $log->setDate($date);
         $log->setType(TimeLog::TYPE_CYCLE_END_FROZEN);
         $this->em->persist($log);
         $this->em->flush();
@@ -195,16 +230,29 @@ class TimeLogEventListener
 
     /**
      * @param Membership $membership
-     * @param \DateTime $date
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
-    private function createRegistrationExpiredLog(Membership $membership, \DateTime $date)
+    private function createExemptedLog(Membership $membership)
     {
         $log = new TimeLog();
         $log->setMembership($membership);
         $log->setTime(0);
-        $log->setDate($date);
+        $log->setType(TimeLog::TYPE_CYCLE_END_EXEMPTED);
+        $this->em->persist($log);
+        $this->em->flush();
+    }
+
+    /**
+     * @param Membership $membership
+     * @throws \Doctrine\ORM\ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    private function createRegistrationExpiredLog(Membership $membership)
+    {
+        $log = new TimeLog();
+        $log->setMembership($membership);
+        $log->setTime(0);
         $log->setType(TimeLog::TYPE_CYCLE_END_EXPIRED_REGISTRATION);
         $this->em->persist($log);
         $this->em->flush();

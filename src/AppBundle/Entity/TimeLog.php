@@ -8,6 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
  * TimeLog
  *
  * @ORM\Table(name="time_log")
+ * @ORM\HasLifecycleCallbacks()
  * @ORM\Entity(repositoryClass="AppBundle\Repository\TimeLogRepository")
  */
 class TimeLog
@@ -20,6 +21,7 @@ class TimeLog
     const TYPE_CYCLE_END_FROZEN = 3;
     const TYPE_CYCLE_END_EXPIRED_REGISTRATION = 4;
     const TYPE_CYCLE_END_REGULATE_OPTIONAL_SHIFTS = 5;
+    const TYPE_CYCLE_END_EXEMPTED = 6;
 
     /**
      * @var int
@@ -33,9 +35,15 @@ class TimeLog
     /**
      * @var \DateTime
      *
-     * @ORM\Column(name="date", type="datetime")
+     * @ORM\Column(name="created_at", type="datetime")
      */
-    private $date;
+    private $createdAt;
+
+    /**
+     * @ORM\ManyToOne(targetEntity="User")
+     * @ORM\JoinColumn(name="created_by_id", referencedColumnName="id")
+     */
+    private $createdBy;
 
     /**
      * @var int
@@ -71,6 +79,14 @@ class TimeLog
     private $shift;
 
     /**
+     * @ORM\PrePersist
+     */
+    public function setCreatedAtValue()
+    {
+        $this->createdAt = new \DateTime();
+    }
+
+    /**
      * Get id
      *
      * @return int
@@ -81,27 +97,36 @@ class TimeLog
     }
 
     /**
-     * Set date
+     * Get createdAt
      *
-     * @param \DateTime $date
+     * @return \DateTime
+     */
+    public function getCreatedAt()
+    {
+        return $this->createdAt;
+    }
+
+    /**
+     * Set createdBy
+     *
+     * @param \AppBundle\Entity\User $createBy
      *
      * @return TimeLog
      */
-    public function setDate($date)
+    public function setCreatedBy(\AppBundle\Entity\User $user = null)
     {
-        $this->date = $date;
-
+        $this->createdBy = $user;
         return $this;
     }
 
     /**
-     * Get date
+     * Get createdBy
      *
-     * @return \DateTime
+     * @return \AppBundle\Entity\User
      */
-    public function getDate()
+    public function getCreatedBy()
     {
-        return $this->date;
+        return $this->createdBy;
     }
 
     /**
@@ -201,6 +226,19 @@ class TimeLog
     }
 
     /**
+     * Set created_at
+     *
+     * @param \DateTime $created_at
+     *
+     * @return TimeLog
+     */
+    public function setCreatedAt($date)
+    {
+        $this->createdAt = $date;
+        return $this;
+    }
+
+    /**
      * @param int $type
      */
     public function setType(int $type): void
@@ -232,6 +270,12 @@ class TimeLog
                 return "Début de cycle (compte expiré)";
             case self::TYPE_CYCLE_END_REGULATE_OPTIONAL_SHIFTS:
                 return "Régulation du bénévolat facultatif";
+            case self::TYPE_CYCLE_END_EXEMPTED:
+                return "Début de cycle (compte exempté de créneau - exemption n°" . join(",", $this->membership->getMembershipShiftExemptions()->filter(function($element) {
+                    return $element->isValid($this->createdAt);
+                })->map(function($element) {
+                    return $element->getId();
+                })->toArray()) . ")";
         }
         return "Type de log de temps inconnu: " . $this->type;
     }

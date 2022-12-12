@@ -71,7 +71,7 @@ class AppExtension extends AbstractExtension
 
         for ($i = 0; $i < strlen($text); $i++)
         {
-            $char = $text{$i};
+            $char = $text[$i];
             $r = rand(0, 100);
 
             # roughly 10% raw, 45% hex, 45% dec
@@ -117,30 +117,45 @@ class AppExtension extends AbstractExtension
         return 'my_app_extension';
     }
 
+    /**
+     * exemple output: "mercredi 29 juin"
+     */
     public function date_fr_long(\DateTime $date)
     {
         setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%A %e %B", $date->getTimestamp());
     }
 
+    /**
+     * exemple output: "06/29/22 11:30"
+     */
     public function date_time(\DateTime $date)
     {
         setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%D %H:%M", $date->getTimestamp());
     }
 
+    /**
+     * exemple output: "mercredi 29 juin 2022"
+     */
     public function date_fr_full(\DateTime $date)
     {
         setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%A %e %B %Y", $date->getTimestamp());
     }
 
+    /**
+     * exemple output: "mercredi 29 juin 2022 à 11:31"
+     */
     public function date_fr_with_time(\DateTime $date)
     {
         setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8', 'fr_FR.UTF-8', 'fr.UTF-8');
         return strftime("%A %e %B %Y à %H:%M", $date->getTimestamp());
     }
 
+    /**
+     * exemple output: "2022-06-29T11:32:18+02:00"
+     */
     public function date_w3c(\DateTime $date)
     {
         return $date->format( \DateTimeInterface::W3C);
@@ -197,7 +212,9 @@ class AppExtension extends AbstractExtension
 
     public function duration_from_minutes(int $minutes)
     {
-        $formatted = gmdate("G\hi", abs($minutes) * 60);
+        $hours = intdiv(abs($minutes), 60);
+        $remaining_minutes = sprintf("%02d", abs($minutes) % 60);
+        $formatted = $hours.'h'.$remaining_minutes;
         if ($minutes < 0) {
             return "-".$formatted;
         } else {

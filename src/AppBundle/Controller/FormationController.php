@@ -30,11 +30,11 @@ class FormationController extends Controller
     public function indexAction()
     {
         $formations = $this->getDoctrine()->getManager()->getRepository('AppBundle:Formation')->findAll();
-        return $this->render('admin/role/list.html.twig',array('formations'=>$formations));
+        return $this->render('admin/formation/list.html.twig',array('formations'=>$formations));
     }
 
     /**
-     * role new
+     * Formation new
      *
      * @Route("/new", name="formation_new")
      * @Method({"GET", "POST"})
@@ -51,30 +51,28 @@ class FormationController extends Controller
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-
             $em->persist($formation);
             $em->flush();
 
-            $session->getFlashBag()->add('success', 'Le nouveau role a bien été créé !');
+            $session->getFlashBag()->add('success', 'La nouvelle formation a bien été créée !');
 
             return $this->redirectToRoute('admin_formations');
-
         }
 
-        return $this->render('admin/role/new.html.twig', array(
-            'role' => $formation,
+        return $this->render('admin/formation/new.html.twig', array(
+            'formation' => $formation,
             'form' => $form->createView(),
         ));
     }
 
     /**
-     * Comission edit
+     * Formation edit
      *
      * @Route("/{id}/edit", name="formation_edit")
      * @Method({"GET", "POST"})
      * @Security("has_role('ROLE_ADMIN')")
      */
-    public function editAction(Request $request,Formation $formation)
+    public function editAction(Request $request, Formation $formation)
     {
         $session = new Session();
 
@@ -82,32 +80,30 @@ class FormationController extends Controller
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-
             $em = $this->getDoctrine()->getManager();
             $em->persist($formation);
             $em->flush();
 
-            $session->getFlashBag()->add('success', 'Le role a bien été édité !');
+            $session->getFlashBag()->add('success', 'La formation a bien été éditée !');
 
             return $this->redirectToRoute('admin_formations');
-
         }
 
-        return $this->render('admin/role/edit.html.twig', array(
-            'role' => $formation,
+        return $this->render('admin/formation/edit.html.twig', array(
+            'formation' => $formation,
             'form' => $form->createView(),
             'delete_form' => $this->getDeleteForm($formation)->createView(),
         ));
     }
 
     /**
-     * Comission edit
+     * Formation delete
      *
      * @Route("/{id}", name="formation_delete")
      * @Method({"DELETE"})
      * @Security("has_role('ROLE_SUPER_ADMIN')")
      */
-    public function removeAction(Request $request,Formation $formation)
+    public function removeAction(Request $request, Formation $formation)
     {
         $session = new Session();
         $form = $this->getDeleteForm($formation);
@@ -116,7 +112,7 @@ class FormationController extends Controller
             $em = $this->getDoctrine()->getManager();
             $em->remove($formation);
             $em->flush();
-            $session->getFlashBag()->add('success', 'Le role a bien été supprimée !');
+            $session->getFlashBag()->add('success', 'La formation a bien été supprimée !');
         }
         return $this->redirectToRoute('admin_formations');
     }
@@ -125,7 +121,8 @@ class FormationController extends Controller
      * @param Formation $formation
      * @return \Symfony\Component\Form\FormInterface
      */
-    protected function getDeleteForm(Formation $formation){
+    protected function getDeleteForm(Formation $formation)
+    {
         return $this->createFormBuilder()
             ->setAction($this->generateUrl('formation_delete', array('id' => $formation->getId())))
             ->setMethod('DELETE')

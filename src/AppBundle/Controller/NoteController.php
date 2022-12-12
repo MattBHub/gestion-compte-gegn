@@ -13,16 +13,6 @@ use AppBundle\Entity\TimeLog;
 use AppBundle\Entity\User;
 use AppBundle\Form\BeneficiaryType;
 use AppBundle\Form\NoteType;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
-use Symfony\Component\Form\Extension\Core\Type\IntegerType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\EmailType;
-use Symfony\Component\Form\Extension\Core\Type\HiddenType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
-use Symfony\Component\Form\Extension\Core\Type\FileType;
-use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\Form\Extension\Core\Type\SubmitType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Form;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\Validator\Constraints\Email as EmailConstraint;
@@ -57,15 +47,13 @@ class NoteController extends Controller
      *
      * @Route("/note/{id}/reply", name="note_reply")
      * @Method({"POST"})
+     * @Security("has_role('ROLE_USER_VIEWER')")
      */
     public function noteReplyAction(Request $request, Note $note)
     {
-        $this->denyAccessUnlessGranted('access_tools', $this->getCurrentAppUser());
-
         $new_note = new Note();
         $new_note->setParent($note);
         $new_note->setAuthor($this->getCurrentAppUser());
-        $new_note->setCreatedAt(new \DateTime());
         $new_note->setSubject($note->getSubject());
 
         $note_form = $this->createForm(NoteType::class, $new_note);

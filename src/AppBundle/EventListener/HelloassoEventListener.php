@@ -105,10 +105,13 @@ class HelloassoEventListener
 
                 if ($membership->getLastRegistration()){
                     $expire = clone $this->container->get('membership_service')->getExpire($membership);
-                    if ($expire > $payment->getDate()) // not yet expired
+                    if ($expire >= $payment->getDate()) // not yet expired
+                    {
+                        $expire->modify('+1 day');
                         $registration->setDate($expire);
-                    else
+                    } else {
                         $registration->setDate($payment->getDate());
+                    }
                 }else{ //first registration
                     $registration->setDate($payment->getDate());
                 }
@@ -121,8 +124,9 @@ class HelloassoEventListener
                 $payment->setRegistration($registration);
                 $membership->addRegistration($registration);
 
-                if ($membership->isWithdrawn()){
-                    $membership->setWithdrawn(false); //open
+                // if account closed, re-open
+                if ($membership->isWithdrawn()) {
+                    $membership->setWithdrawn(false);
                 }
                 $this->_em->persist($membership);
 

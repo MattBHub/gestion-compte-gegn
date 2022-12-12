@@ -1,11 +1,12 @@
 {% extends 'layout.html.twig' %}
 
-{% block breadcrumps %}
-    {% if is_granted("IS_AUTHENTICATED_REMEMBERED") %}
-    <a href="{{ path('homepage') }}"><i class="material-icons">home</i></a> <i class="material-icons">chevron_right</i>
-    <i class="material-icons">build</i><a href="{{ path('user_office_tools') }}">Outils adhésion et ré-adhésion</a> <i class="material-icons">chevron_right</i>
-    <i class="material-icons">search</i><span>Recherche numéro d'adhérent</span>
-    {% endif %}
+{% block breadcrumbs %}
+{% if is_granted("IS_AUTHENTICATED_REMEMBERED") %}
+    <a href="{{ path('homepage') }}"><i class="material-icons">home</i></a><i class="material-icons">chevron_right</i>
+    <a href="{{ path('admin') }}"><i class="material-icons">build</i>&nbsp;Administration</a><i class="material-icons">chevron_right</i>
+    <a href="{{ path('user_office_tools') }}"><i class="material-icons">folder_shared</i>&nbsp;Adhésion et ré-adhésion</a><i class="material-icons">chevron_right</i>
+    <i class="material-icons">search</i>&nbsp;Recherche numéro d'adhérent
+{% endif %}
 {% endblock %}
 
 {% block aftercontainer %}
@@ -33,7 +34,7 @@
             <div class="collection">
                 {% for beneficiary in beneficiaries %}
                     <form action="{{ path(return_path, { (routeParam): beneficiary.id } | merge(params)) }}" method="post" class="collection-item">
-                        <a href="#" onclick="$(this).closest('form').submit()" >#{{ beneficiary.memberNumber }} {{ beneficiary.firstname }} {{ beneficiary.lastname | first | upper }}{% if beneficiary.membership.lastRegistration %} - {{ beneficiary.membership.lastRegistration.date | date('d F Y') }}{% endif %}</a>
+                        <a href="#" onclick="$(this).closest('form').submit()" >{{ beneficiary.publicDisplayNameWithMemberNumber }}{% if beneficiary.membership.lastRegistration %} - {{ beneficiary.membership.lastRegistration.date | date('d F Y') }}{% endif %}</a>
                     </form>
                 {% endfor %}
             </div>

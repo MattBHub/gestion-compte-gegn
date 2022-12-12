@@ -13,40 +13,47 @@ use Doctrine\ORM\Query\Expr\Join;
 class MembershipRepository extends \Doctrine\ORM\EntityRepository
 {
 
-    public function findWithNewCycleStarting($date = null)
+    public function findWithNewCycleStarting($date, $cycle_type)
     {
-        if (!($date)) {
-            $date = new \Datetime('now');
-        }
-
-        $qb = $this->createQueryBuilder('u');
-
-        $qb
+        $qb = $this->createQueryBuilder('u')
             ->where('u.withdrawn = 0')
             ->andWhere('u.firstShiftDate is not NULL')
-            ->andWhere('u.firstShiftDate != :now')
-            ->andWhere('MOD(DATE_DIFF(:now, u.firstShiftDate), 28) = 0')
-            ->setParameter('now', $date);
+            ->andWhere('u.firstShiftDate < :now');
+
+        if ($cycle_type == "abcd") {
+            $day = $date->format("N") - 1; // 0 (for Monday) through 6 (for Sunday)
+            $week = ($date->format("W") - 1) % 4; // 0 (for week A) through 3 (for week D)
+            if ($day != 0 or $week != 0) {
+                return [];
+            }
+        } else {
+            $qb = $qb->andWhere('MOD(DATE_DIFF(:now, u.firstShiftDate), 28) = 0');
+        }
 
         return $qb
+            ->setParameter('now', $date)
             ->getQuery()
             ->getResult();
     }
 
-    public function findWithHalfCyclePast($date = null)
+    public function findWithHalfCyclePast($date, $cycle_type)
     {
-        if (!($date)) {
-            $date = new \Datetime('now');
-        }
-        $qb = $this->createQueryBuilder('u');
-
-        $qb
+        $qb = $this->createQueryBuilder('u')
             ->where('u.withdrawn = 0')
             ->andWhere('u.frozen = 0')
-            ->andWhere('u.firstShiftDate is not NULL')
-            ->andWhere('MOD(DATE_DIFF(:now, u.firstShiftDate), 14) = 0')
-            ->andWhere('MOD(DATE_DIFF(:now, u.firstShiftDate), 28) != 0')
-            ->setParameter('now', $date);
+            ->andWhere('u.firstShiftDate is not NULL');
+
+        if ($cycle_type == "abcd") {
+            $day = $date->format("N") - 1; // 0 (for Monday) through 6 (for Sunday)
+            $week = ($date->format("W") - 1) % 4; // 0 (for week A) through 3 (for week D)
+            if ($day != 0 or $week != 2) {
+                return [];
+            }
+        } else {
+                $qb = $qb->andWhere('MOD(DATE_DIFF(:now, u.firstShiftDate), 14) = 0')
+                ->andWhere('MOD(DATE_DIFF(:now, u.firstShiftDate), 28) != 0')
+                ->setParameter('now', $date);
+        }
 
         return $qb
             ->getQuery()
@@ -75,7 +82,7 @@ class MembershipRepository extends \Doctrine\ORM\EntityRepository
      *
      * @return array
      */
-    public function findWithExpiredRegistrationFrom($from,$delay)
+    public function findWithExpiredRegistrationFrom($from)
     {
         $qb = $this->createQueryBuilder('m');
         $qb = $qb->leftJoin("m.registrations", "r")->addSelect("r"); //registrations
@@ -83,7 +90,7 @@ class MembershipRepository extends \Doctrine\ORM\EntityRepository
             ->addSelect("lr")
             ->where('lr.id IS NULL') //registration is the last one registered
             ->andWhere('m.withdrawn = false')
-            ->andWhere("DATE_ADD(r.date, ".$delay.", 'YEAR') < :from")
+            ->andWhere("r.date <= :from")
             ->setParameter('from', $from);
 
         return $qb->getQuery()->getResult();

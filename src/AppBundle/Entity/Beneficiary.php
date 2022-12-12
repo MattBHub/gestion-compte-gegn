@@ -12,6 +12,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * Beneficiary
  *
  * @ORM\Table(name="beneficiary")
+ * @ORM\HasLifecycleCallbacks()
  * @ORM\Entity(repositoryClass="AppBundle\Repository\BeneficiaryRepository")
  */
 class Beneficiary
@@ -59,6 +60,13 @@ class Beneficiary
     private $address;
 
     /**
+     * @var bool
+     *
+     * @ORM\Column(name="flying", type="boolean", options={"default" : 0}, nullable=false)
+     */
+    private $flying;
+
+    /**
      * @ORM\OneToOne(targetEntity="User", inversedBy="beneficiary", cascade={"persist", "remove"})
      * @ORM\JoinColumn(name="user_id", referencedColumnName="id",nullable=false)
      * @Assert\NotNull
@@ -78,11 +86,6 @@ class Beneficiary
      * @OrderBy({"start" = "DESC"})
      */
     private $shifts;
-
-    /**
-     * @ORM\OneToMany(targetEntity="Shift", mappedBy="booker",cascade={"remove"})
-     */
-    private $booked_shifts;
 
     /**
      * @ORM\OneToMany(targetEntity="Shift", mappedBy="lastShifter",cascade={"remove"})
@@ -126,7 +129,35 @@ class Beneficiary
      */
     private $received_proxies;
 
-    private $_counters = [];
+    /**
+     * @var \DateTime
+     *
+     * @ORM\Column(name="created_at", type="datetime")
+     */
+    private $createdAt;
+
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        $this->commissions = new ArrayCollection();
+        $this->formations = new ArrayCollection();
+        $this->shifts = new ArrayCollection();
+    }
+
+    public function __toString()
+    {
+        return $this->getDisplayNameWithMemberNumber();
+    }
+
+    /**
+     * @ORM\PrePersist
+     */
+    public function setCreatedAtValue()
+    {
+        $this->createdAt = new \DateTime();
+    }
 
     /**
      * Get id
@@ -186,19 +217,40 @@ class Beneficiary
         return $this;
     }
 
-    public function getDisplayName()
+    public function getDisplayName(): string
+    {
+        return $this->getFirstname() . ' ' . $this->getLastname();
+    }
+
+    /**
+     * /!\ DO NOT MODIFY /!\
+     *
+     * Such a method is also used for autocomplete. If you want to
+     * change it, you HAVE to adapt the methods used in data
+     * transformer: BeneficiaryToStringTransformer. Otherwise,
+     * autocomplete will be broken.
+     */
+    public function getDisplayNameWithMemberNumber(): string
     {
         return '#' . $this->getMemberNumber() . ' ' . $this->getFirstname() . ' ' . $this->getLastname();
     }
 
-    public function getPublicDisplayName()
+    public function getDisplayNameWithMemberNumberAndStatusIcon(): string
     {
-        return '#' . $this->getMemberNumber() . ' ' . $this->getFirstname() . ' ' . $this->getLastname()[0];
+        $label = '#' . $this->getMemberNumber();
+        $label .= $this->getStatusIcon(true);
+        $label .=  ' ' . $this->getDisplayName();
+        return $label;
     }
 
-    public function __toString()
+    public function getPublicDisplayName(): string
     {
-        return $this->getDisplayName();
+        return $this->getFirstname() . ' ' . $this->getLastname()[0];
+    }
+
+    public function getPublicDisplayNameWithMemberNumber(): string
+    {
+        return '#' . $this->getMemberNumber() . ' ' . $this->getPublicDisplayName();
     }
 
     /**
@@ -290,17 +342,6 @@ class Beneficiary
     public function isMain()
     {
         return $this === $this->getMembership()->getMainBeneficiary();
-    }
-
-    /**
-     * Constructor
-     */
-    public function __construct()
-    {
-        $this->commissions = new ArrayCollection();
-        $this->formations = new ArrayCollection();
-        $this->shifts = new ArrayCollection();
-        $this->booked_shifts = new ArrayCollection();
     }
 
     /**
@@ -437,40 +478,6 @@ class Beneficiary
     }
 
     /**
-     * Add bookedShift
-     *
-     * @param \AppBundle\Entity\Shift $bookedShift
-     *
-     * @return Beneficiary
-     */
-    public function addBookedShift(\AppBundle\Entity\Shift $bookedShift)
-    {
-        $this->booked_shifts[] = $bookedShift;
-
-        return $this;
-    }
-
-    /**
-     * Remove bookedShift
-     *
-     * @param \AppBundle\Entity\Shift $bookedShift
-     */
-    public function removeBookedShift(\AppBundle\Entity\Shift $bookedShift)
-    {
-        $this->booked_shifts->removeElement($bookedShift);
-    }
-
-    /**
-     * Get bookedShifts
-     *
-     * @return \Doctrine\Common\Collections\Collection
-     */
-    public function getBookedShifts()
-    {
-        return $this->booked_shifts;
-    }
-
-    /**
      * Add task
      *
      * @param \AppBundle\Entity\Task $task
@@ -582,14 +589,41 @@ class Beneficiary
         return $this->received_proxies;
     }
 
-    public function getAutocompleteLabel()
-    {
-        return '#' . $this->getMembership()->getMemberNumber() . ' ' . $this->getFirstname() . ' ' . $this->getLastname() . ' (' . $this->getId() . ')';
-    }
+    /**
+     * return a string with emoji between brackets depending on the
+     * beneficiary status, if she/he is inactive (withdrawn), frozen or flying
+     * or an empty string if none of those
+     *
+     * @param bool $includeLeadingSpace if true add a space at the beginning
+     * @return string with ether emoji(s) for the beneficiary's status or empty
+     */
+    public function getStatusIcon(bool $includeLeadingSpace = false):string{
 
-    public function getAutocompleteLabelFull()
-    {
-        return '#' . $this->getMembership()->getMemberNumber() . ' ' . $this->getFirstname() . ' ' . $this->getLastname() . ' ' . $this->getEmail() . ' (' . $this->getId() . ')';
+
+        $symbols = array();
+
+        if($this->getMembership()->getWithdrawn()){
+            $symbols[]= "&#x26A0;";
+        }
+        if ($this->getMembership()->getFrozen()){
+            $symbols[]= "&#x2744;";
+        }
+        if($this->isFlying()){
+            $symbols[]= "&#9992;";
+        }
+
+        if (count($symbols)){
+            $res = '[' . implode("/", $symbols) . ']';
+
+            if($includeLeadingSpace){
+                $res = " " . $res;
+            }
+        }else{
+            $res =  "";
+        }
+        // 	for dispensed beneficiary &#127989;
+        return $res;
+
     }
 
     /**
@@ -627,7 +661,7 @@ class Beneficiary
     }
 
     /**
-     * Add swipeCard.
+     * Add swipeCard
      *
      * @param \AppBundle\Entity\SwipeCard $swipeCard
      *
@@ -641,7 +675,7 @@ class Beneficiary
     }
 
     /**
-     * Remove swipeCard.
+     * Remove swipeCard
      *
      * @param \AppBundle\Entity\SwipeCard $swipeCard
      *
@@ -653,7 +687,7 @@ class Beneficiary
     }
 
     /**
-     * Get swipeCards.
+     * Get swipeCards
      *
      * @return \Doctrine\Common\Collections\Collection
      */
@@ -662,6 +696,11 @@ class Beneficiary
         return $this->swipe_cards;
     }
 
+    /**
+     * Get enabled swipeCards
+     *
+     * @return \Doctrine\Common\Collections\Collection
+     */
     public function getEnabledSwipeCards()
     {
         return $this->swipe_cards->filter(function ($card) {
@@ -701,20 +740,28 @@ class Beneficiary
         $this->address = $address;
     }
 
-    public function getTimeCount($cycle = 0)
+    /**
+     * @return bool
+     */
+    public function isFlying(): ?bool {
+        return $this->flying;
+    }
+
+    /**
+     * @param bool $flying
+     */
+    public function setFlying(?bool $flying): void {
+        $this->flying = $flying;
+    }
+
+    /**
+     * Get createdAt
+     *
+     * @return \DateTime
+     */
+    public function getCreatedAt()
     {
-        if (!isset($this->_counters[$cycle])) {
-            $this->_counters[$cycle] = 0;
-            $member = $this->getMembership();
-            //todo add a custom query for this
-            $beneficiary_shift_for_current_cycle = $this->getShifts()->filter(function (Shift $shift) use ($member, $cycle) {
-                return ($shift->getStart() > $member->startOfCycle($cycle) && $shift->getEnd() < $member->endOfCycle($cycle));
-            });
-            foreach ($beneficiary_shift_for_current_cycle as $s) {
-                $this->_counters[$cycle] += $s->getDuration();
-            }
-        }
-        return $this->_counters[$cycle];
+        return $this->createdAt;
     }
 
 }

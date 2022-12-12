@@ -26,13 +26,6 @@ class Event
     private $id;
 
     /**
-     * @ORM\Column(type="datetime")
-     *
-     * @var \DateTime
-     */
-    private $updatedAt;
-
-    /**
      * @var string
      *
      * @Assert\NotBlank()
@@ -89,9 +82,9 @@ class Event
     /**
      * @var \DateTime
      *
-     * @ORM\Column(name="min_date_of_last_registration", type="datetime", nullable=true)
+     * @ORM\Column(name="max_date_of_last_registration", type="datetime", nullable=true)
      */
-    private $min_date_of_last_registration;
+    private $max_date_of_last_registration;
 
     /**
      * @var bool
@@ -100,11 +93,31 @@ class Event
      */
     private $need_proxy;
 
+    /**
+     * @var bool
+     *
+     * @ORM\Column(name="anonymous_proxy", type="boolean", unique=false, options={"default" : 0},nullable=true)
+     */
+    private $anonymous_proxy;
 
     /**
      * @ORM\OneToMany(targetEntity="Proxy", mappedBy="event",cascade={"persist", "remove"})
      */
     private $proxies;
+
+    /**
+     * @var \DateTime
+     *
+     * @ORM\Column(name="created_at", type="datetime")
+     */
+    private $createdAt;
+
+    /**
+     * @ORM\Column(type="datetime")
+     *
+     * @var \DateTime
+     */
+    private $updatedAt;
 
     /**
      * Constructor
@@ -116,6 +129,15 @@ class Event
 
     /**
      * @ORM\PrePersist
+     */
+    public function setCreatedAtValue()
+    {
+        $this->createdAt = new \DateTime();
+    }
+
+    /**
+     * @ORM\PrePersist
+     * @ORM\PreUpdate
      */
     public function setUpdatedAtValue()
     {
@@ -131,7 +153,6 @@ class Event
     {
         return $this->id;
     }
-
 
     /**
      * If manually uploading a file (i.e. not using Symfony Form) ensure an instance
@@ -240,7 +261,6 @@ class Event
         $this->proxys->removeElement($proxy);
     }
 
-
     public function getProxiesByOwner(Beneficiary $beneficiary)
     {
         return $this->proxies->filter(function (Proxy $proxy) use ($beneficiary) {
@@ -338,17 +358,54 @@ class Event
     }
 
     /**
-     * Set minDateOfLastRegistration
+     * Set anonymousProxy
      *
-     * @param \DateTime $minDateOfLastRegistration
+     * @param boolean $anonymousProxy
      *
      * @return Event
      */
-    public function setMinDateOfLastRegistration($minDateOfLastRegistration)
+    public function setAnonymousProxy($anonymousProxy)
     {
-        $this->min_date_of_last_registration = $minDateOfLastRegistration;
+        $this->anonymous_proxy = $anonymousProxy;
 
         return $this;
+    }
+
+    /**
+     * Get anonymousProxy
+     *
+     * @return boolean
+     */
+    public function getAnonymousProxy()
+    {
+        return $this->anonymous_proxy;
+    }
+
+    /**
+     * Set maxDateOfLastRegistration
+     *
+     * @param \DateTime $maxDateOfLastRegistration
+     *
+     * @return Event
+     */
+    public function setMaxDateOfLastRegistration($maxDateOfLastRegistration)
+    {
+        $this->max_date_of_last_registration = $maxDateOfLastRegistration;
+
+        return $this;
+    }
+
+    /**
+     * Get maxDateOfLastRegistration
+     *
+     * @return \DateTime
+     */
+    public function getMaxDateOfLastRegistration()
+    {
+        if (is_null($this->max_date_of_last_registration)) {
+            return $this->date;
+        }
+        return $this->max_date_of_last_registration;
     }
 
     /**
@@ -358,11 +415,17 @@ class Event
      */
     public function getMinDateOfLastRegistration()
     {
-        return $this->min_date_of_last_registration;
+        $registrationDuration = $this->getParameter('registration_duration');
+        if (!is_null($registrationDuration)) {
+            $minDateOfLastRegistration = clone $this->getMaxDateOfLastRegistration();
+            $minDateOfLastRegistration->modify('-'.$registrationDuration);
+            return $minDateOfLastRegistration;
+        }
+        return null;
     }
 
     /**
-     * Set img.
+     * Set img
      *
      * @param string|null $img
      *
@@ -376,7 +439,7 @@ class Event
     }
 
     /**
-     * Get img.
+     * Get img
      *
      * @return string|null
      */
@@ -386,7 +449,7 @@ class Event
     }
 
     /**
-     * Set imgSize.
+     * Set imgSize
      *
      * @param int|null $imgSize
      *
@@ -400,7 +463,7 @@ class Event
     }
 
     /**
-     * Get imgSize.
+     * Get imgSize
      *
      * @return int|null
      */
@@ -410,21 +473,17 @@ class Event
     }
 
     /**
-     * Set updatedAt.
+     * Get createdAt
      *
-     * @param \DateTime $updatedAt
-     *
-     * @return Event
+     * @return \DateTime
      */
-    public function setUpdatedAt($updatedAt)
+    public function getCreatedAt()
     {
-        $this->updatedAt = $updatedAt;
-
-        return $this;
+        return $this->createdAt;
     }
 
     /**
-     * Get updatedAt.
+     * Get updatedAt
      *
      * @return \DateTime
      */

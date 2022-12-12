@@ -1,12 +1,13 @@
 {% extends 'layout.html.twig' %}
 
-{% block breadcrumps %}
-    {% if is_granted("IS_AUTHENTICATED_REMEMBERED") %}
-        <a href="{{ path('homepage') }}"><i class="material-icons">home</i></a> <i class="material-icons">chevron_right</i>
-        <i class="material-icons">build</i><a href="{{ path('user_office_tools') }}">Outils adhésion et ré-adhésion</a> <i class="material-icons">chevron_right</i>
-        <i class="material-icons">search</i><a href="{{ path('find_member_number') }}">Recherche numéro d'adhérent</a> <i class="material-icons">chevron_right</i>
-        <i class="material-icons">check</i><span>Trouvé</span>
-    {% endif %}
+{% block breadcrumbs %}
+{% if is_granted("IS_AUTHENTICATED_REMEMBERED") %}
+    <a href="{{ path('homepage') }}"><i class="material-icons">home</i></a><i class="material-icons">chevron_right</i>
+    <a href="{{ path('admin') }}"><i class="material-icons">build</i>&nbsp;Administration</a><i class="material-icons">chevron_right</i>
+    <a href="{{ path('user_office_tools') }}"><i class="material-icons">folder_shared</i>&nbsp;Adhésion et ré-adhésion</a><i class="material-icons">chevron_right</i>
+    <a href="{{ path('find_member_number') }}"><i class="material-icons">search</i>&nbsp;Recherche numéro d'adhérent</a><i class="material-icons">chevron_right</i>
+    <i class="material-icons">check</i>&nbsp;Trouvé
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -23,7 +24,7 @@
                 {% else %}
                     {% if is_granted("IS_AUTHENTICATED_REMEMBERED") %}
                         {% if user.isEnabled %}
-                            Le compte de l'adhérent #{{ member.memberNumber }} <b>{{ beneficiary.firstname }} {{ beneficiary.lastname|first|upper }}</b> est déjà actif.
+                            Le compte de l'adhérent <b>{{ beneficiary.publicDisplayNameWithMemberNumber }}</b> est déjà actif.
                             <br>
                             Il est lié à l'adresse courriel {{ user.anonymousEmail }}<br>
                             <form action="{{ path('fos_user_resetting_send_email') }}" method="POST" class="fos_user_resetting_request">
@@ -38,7 +39,7 @@
                                 </div>
                             </form>
                         {% else %}
-                            C'est <b>{{ beneficiary.firstname }} {{ beneficiary.lastname|first|upper }}</b> !
+                            C'est <b>{{ beneficiary.publicDisplayName }}</b> !
                             {% if not member.lastRegistration %}
                                 <div>Oups, erreur de saisie, nous n'avons pas enregistré d'adhésion pour ce compte. <br/>Il ne peux donc pas être activé.</div>
                                 <div class="center-align">
@@ -74,7 +75,7 @@
                         {% endif %}
                     {% else %}
                         {% if user.isEnabled %}
-                            Le compte de l'adhérent #{{ member.memberNumber }} <b>{{ beneficiary.firstname }} {{ beneficiary.lastname|first|upper }}</b> est déjà actif.
+                            Le compte de l'adhérent <b>{{ beneficiary.publicDisplayNameWithMemberNumber }}</b> est déjà actif.
                             <br>
                             Il est lié à l'adresse courriel {{ user.anonymousEmail }}
                             <br>
@@ -94,7 +95,7 @@
                                 </div>
                             </div>
                         {% else %}
-                            Bonjour <b>{{ beneficiary.firstname }} {{ beneficiary.lastname|first|upper }}</b> !
+                            Bonjour <b>{{ beneficiary.publicDisplayName }}</b> !
                             {% if not member.lastRegistration %}
                                 <div class="text-orange">Oups, erreur de saisie, nous n'avons pas enregistré ton adhésion cette année. Ton compte ne peut pas être activé.</div>
                             {% else %}

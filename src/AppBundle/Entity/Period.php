@@ -51,12 +51,18 @@ class Period
     private $job;
 
     /**
-     * Many Period have Many Positions.
-     * @ORM\ManyToMany(targetEntity="PeriodPosition", mappedBy="periods",cascade={"persist"})
-     * @OrderBy({"nbOfShifter" = "ASC"})
-     * @ORM\JoinTable(name="period_positions")
+     * One Period have Many Positions.
+     * @ORM\OneToMany(targetEntity="PeriodPosition", mappedBy="period", cascade={"persist", "remove"}), orphanRemoval=true)
      */
     private $positions;
+
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        $this->positions = new \Doctrine\Common\Collections\ArrayCollection();
+    }
 
     /**
      * Get id
@@ -90,6 +96,17 @@ class Period
     public function getDayOfWeek()
     {
         return $this->dayOfWeek;
+    }
+
+    /**
+     * Get dayOfWeekString
+     *
+     * @return int
+     */
+    public function getDayOfWeekString()
+    {
+        setlocale(LC_TIME, 'fr_FR.UTF8');
+        return strftime("%A", strtotime("Monday + {$this->dayOfWeek} days"));
     }
 
     /**
@@ -140,15 +157,6 @@ class Period
         return $this->end;
     }
 
-
-    /**
-     * Constructor
-     */
-    public function __construct()
-    {
-        $this->positions = new \Doctrine\Common\Collections\ArrayCollection();
-    }
-
     /**
      * Set job
      *
@@ -176,13 +184,13 @@ class Period
     /**
      * Add periodPosition
      *
-     * @param \AppBundle\Entity\PeriodPosition $periodPosition
+     * @param \AppBundle\Entity\PeriodPosition $position
      *
      * @return Period
      */
     public function addPosition(\AppBundle\Entity\PeriodPosition $position)
     {
-        $position->addPeriod($this);
+        $position->setPeriod($this);
         $this->positions[] = $position;
 
         return $this;
@@ -195,7 +203,6 @@ class Period
      */
     public function removePosition(\AppBundle\Entity\PeriodPosition $position)
     {
-        $position->removePeriod($this);
         $this->positions->removeElement($position);
     }
 
@@ -207,5 +214,170 @@ class Period
     public function getPositions()
     {
         return $this->positions;
+    }
+
+    /**
+     * Get all the positions per week cycle
+     *
+     * @return array
+     */
+    public function getPositionsPerWeekCycle(): array
+    {
+        $positionsPerWeekCycle = array();
+        foreach ($this->positions as $position) {
+            if (!array_key_exists($position->getWeekCycle(), $positionsPerWeekCycle)) {
+                $positionsPerWeekCycle[$position->getWeekCycle()] = array();
+            }
+            $positionsPerWeekCycle[$position->getWeekCycle()][] = $position;
+        }
+        ksort($positionsPerWeekCycle);
+        return $positionsPerWeekCycle;
+    }
+
+    /**
+     * Return true if at least one shifter (a.k.a. beneficiary) registered for
+     * this period is "problematic", meaning with a withdrawn or frozen membership
+     * of if the shifter is member of the flying team.
+     *
+     * useful only if the use_fly_and_fixed is activated
+     *
+     * @param String|null $weekFilter a string of the week to keep or null if no filter
+     * @return bool
+     */
+    public function isProblematic(?String $weekFilter=null): bool
+    {
+
+        foreach ($this->positions as $position) {
+            if($shifter = $position->getShifter()){
+                if((($weekFilter && $position->getWeekCycle()==$weekFilter) or !$weekFilter)
+                    and ($shifter->isFlying()
+                    or $shifter->getMembership()->isFrozen()
+                    or $shifter->getMembership()->isWithdrawn())){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return true if no shifter (a.k.a. beneficiary) are registered for the period
+     *
+     * useful only if the use_fly_and_fixed is activated
+     *
+     * @param String|null $weekFilter a string of the week to keep or null if no filter
+     * @return bool
+     */
+    public function isEmpty(?String $weekFilter=null): bool
+    {
+        // false at the first position with a shifter
+        foreach ($this->positions as $position) {
+            if($position->getShifter()){
+                if(($weekFilter && $position->getWeekCycle()==$weekFilter) or !$weekFilter){
+                    return false;
+                }
+            }
+        }
+        // is empty if there are actually some position
+        return count ($this->getGroupedPositionsPerWeekCycle($weekFilter)) != 0;
+    }
+
+    /**
+     * Return true if all the periods have been assigned to a shifter (a.k.a. beneficiary)
+     *
+     * useful only if the use_fly_and_fixed is activated
+     *
+     * @param String|null $weekFilter a string of the week to keep or null if no filter
+     * @return bool
+     */
+    public function isFull(?String $weekFilter=null): bool
+    {
+        // false at the first position without a shifter
+        foreach ($this->positions as $position) {
+            if(! $position->getShifter()){
+                if(($weekFilter && $position->getWeekCycle()==$weekFilter) or !$weekFilter){
+                    return false;
+                }
+            }
+        }
+        // is empty if there are actually some position
+        return count ($this->getGroupedPositionsPerWeekCycle($weekFilter)) != 0;
+    }
+
+    /**
+     * Return true if all the periods have been assigned to a shifter (a.k.a. beneficiary)
+     *
+     * useful only if the use_fly_and_fixed is activated
+     *
+     * @param String|null $weekFilter a string of the week to keep or null if no filter
+     * @return bool
+     */
+    public function isPartial(?String $weekFilter=null): bool
+    {
+        // false at the first position with a shifter
+        $slotEmpty = false;
+        $slotTaken = false;
+
+        foreach ($this->positions as $position) {
+            if(($weekFilter && $position->getWeekCycle()==$weekFilter) or !$weekFilter){
+                if($position->getShifter()){
+                    $slotTaken = True;
+                }else{
+                    $slotEmpty = True;
+                }
+            }
+            if ($slotTaken and $slotEmpty){
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get periodPositions grouped per week cycle
+     *
+     * @param String|null $weekFilter a string of the week to keep or null if no filter
+     * @return array
+     */
+    public function getGroupedPositionsPerWeekCycle(?String $weekFilter=null): array
+    {
+        $aggregatePerFormation = array();
+        foreach ($this->positions as $position) {
+            if (!array_key_exists($position->getWeekCycle(), $aggregatePerFormation)) {
+                $aggregatePerFormation[$position->getWeekCycle()] = array();
+            }
+            if ($position->getFormation()) {
+                $formation = $position->getFormation()->getName();
+            } else {
+                $formation = "Membre";
+            }
+            if (array_key_exists($formation, $aggregatePerFormation[$position->getWeekCycle()])) {
+                $aggregatePerFormation[$position->getWeekCycle()][$formation] += 1;
+            } else {
+                $aggregatePerFormation[$position->getWeekCycle()][$formation] = 1;
+            }
+        }
+        ksort($aggregatePerFormation);
+        $aggregatePerWeekCycle = array();
+
+
+        foreach ($aggregatePerFormation as $week => $position) {
+            if($weekFilter && $week==$weekFilter or !$weekFilter){
+                //week_filter not null and in the filter list or week_filter null
+                $key = $week;
+                foreach ($aggregatePerWeekCycle as $w => $p) {
+                    if ($p == $position) {
+                        $key = $w.", ".$week;
+                        unset($aggregatePerWeekCycle[$w]);
+                        break;
+                    }
+                }
+                $aggregatePerWeekCycle[$key] = $position;
+            }
+        }
+
+        ksort($aggregatePerWeekCycle);
+        return $aggregatePerWeekCycle;
     }
 }

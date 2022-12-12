@@ -13,6 +13,8 @@ use AppBundle\Entity\SwipeCard;
 use AppBundle\Entity\User;
 use AppBundle\Event\HelloassoEvent;
 use AppBundle\Event\SwipeCardEvent;
+use AppBundle\Event\ShiftValidatedEvent;
+use AppBundle\Form\AutocompleteBeneficiaryCollectionType;
 use AppBundle\Service\MembershipService;
 use AppBundle\Twig\Extension\AppExtension;
 use Psr\Log\LoggerInterface;
@@ -35,6 +37,18 @@ use Symfony\Component\Serializer\Encoder\JsonDecode;
 
 class DefaultController extends Controller
 {
+    /**
+     * @var boolean
+     */
+    private $swipeCardLogging;
+    private $swipeCardLoggingAnonymous;
+
+    public function __construct(string $swipeCardLogging, string $swipeCardLoggingAnonymous)
+    {
+        $this->swipeCardLogging = $swipeCardLogging;
+        $this->swipeCardLoggingAnonymous = $swipeCardLoggingAnonymous;
+    }
+
     /**
      * @Route("/", name="homepage")
      */
@@ -59,13 +73,14 @@ class DefaultController extends Controller
                     return $this->redirectToRoute('homepage');
                 }
 
-                $dayAfterEndOfCycle = clone $membership->endOfCycle();
+                $cycle_end = $this->get('membership_service')->getEndOfCycle($membership);
+                $dayAfterEndOfCycle = clone $cycle_end;
                 $dayAfterEndOfCycle->modify('+1 day');
                 if ($membership->getFrozenChange() && !$membership->getFrozen()) {
                     $now = new \DateTime('now');
                     $session->getFlashBag()->add('warning',
                         'Comme demandé, ton compte sera gelé dans ' .
-                        date_diff($now, $membership->endOfCycle())->format('%a jours') .
+                        date_diff($now, $cycle_end)->format('%a jours') .
                         ', le <strong>' . AppExtension::date_fr_long($dayAfterEndOfCycle) . '</strong>' .
                         " Pour annuler, visite <a style=\"text-decoration:underline;color:white;\" href=\"" .
                         $this->get('router')->generate('fos_user_profile_show')
@@ -75,7 +90,7 @@ class DefaultController extends Controller
                     $now = new \DateTime('now');
                     $session->getFlashBag()->add('notice',
                         'Comme demandé, ton compte sera dégelé dans ' .
-                        date_diff($now, $membership->endOfCycle())->format('%a jours') .
+                        date_diff($now, $cycle_end)->format('%a jours') .
                         ', le <strong>' . AppExtension::date_fr_long($dayAfterEndOfCycle) . '</strong>' .
                         " Pour annuler, visite <a style=\"text-decoration:underline;color:white;\" href=\"" .
                         $this->get('router')->generate('fos_user_profile_show')
@@ -89,11 +104,11 @@ class DefaultController extends Controller
                         $remainder = $this->get('membership_service')->getRemainder($membership);
                         $remainingDays = intval($remainder->format("%R%a"));
                         if ($remainingDays < 0)
-                            $session->getFlashBag()->add('error', 'Oups, ton adhésion  a expiré il y a ' . $remainder->format('%a jours') . '... n\'oublie pas de ré-adhérer !');
+                            $session->getFlashBag()->add('error', 'Oups, ton adhésion a expiré il y a ' . $remainder->format('%a jours') . '... n\'oublie pas de ré-adhérer !');
                         else {
                             $session->getFlashBag()->add('warning',
                                 'Ton adhésion expire dans ' . $remainingDays . ' jours.<br>' .
-                                'Tu peux réadhérer en ligne par carte bancaire ou bien au bureau des membres par chèque, espèce ou ' .
+                                'Tu peux ré-adhérer en ligne par carte bancaire ou bien au bureau des membres par chèque, espèce ou ' .
                                 $this->getParameter('local_currency_name') .
                                 '.');
                         }
@@ -184,13 +199,19 @@ class DefaultController extends Controller
     {
         $this->denyAccessUnlessGranted('card_reader', $this->getUser());
         $em = $this->getDoctrine()->getManager();
-        $shifts = $em->getRepository('AppBundle:Shift')->findInProgress(new \DateTime('now'));
-        $buckets = $this->get('shift_service')->generateShiftBuckets($shifts);
+
+        // in progress shifts
+        $shifts_in_progress = $em->getRepository('AppBundle:Shift')->findInProgress();
+        $buckets_in_progress = $this->get('shift_service')->generateShiftBuckets($shifts_in_progress);
+        // upcoming shifts
+        $shifts_upcoming = $em->getRepository('AppBundle:Shift')->findUpcomingToday();
+        $buckets_upcoming = $this->get('shift_service')->generateShiftBuckets($shifts_upcoming);
 
         $dynamicContent = $em->getRepository('AppBundle:DynamicContent')->findOneByCode('CARD_READER')->getContent();
 
-        return $this->render('default/card_reader.html.twig', [
-            "buckets" => $buckets,
+        return $this->render('default/card_reader/index.html.twig', [
+            "buckets_in_progress" => $buckets_in_progress,
+            "buckets_upcoming" => $buckets_upcoming,
             "dynamicContent" => $dynamicContent
         ]);
     }
@@ -215,13 +236,30 @@ class DefaultController extends Controller
         if (!$card) {
             $session->getFlashBag()->add("error", "Oups, ce badge n'est pas actif ou n'existe pas");
         } else {
-            $dispatcher = $this->get('event_dispatcher');
-            $dispatcher->dispatch(SwipeCardEvent::SWIPE_CARD_SCANNED, new SwipeCardEvent($card));
-
             $beneficiary = $card->getBeneficiary();
+            $membership = $beneficiary->getMembership();
+            $cycle_end = $this->get('membership_service')->getEndOfCycle($membership, 0);
+            $counter = $membership->getTimeCount($cycle_end);
+            if ($this->swipeCardLogging) {
+                $dispatcher = $this->get('event_dispatcher');
+                if ($this->swipeCardLoggingAnonymous) {
+                    $card = null;
+                }
+                $dispatcher->dispatch(SwipeCardEvent::SWIPE_CARD_SCANNED, new SwipeCardEvent($card, $counter));
+            }
+            $shifts = $em->getRepository('AppBundle:Shift')->getOnGoingShifts($beneficiary);
+            $dispatcher = $this->get('event_dispatcher');
+            foreach ($shifts as $shift) {
+                if ($shift->getWasCarriedOut() == 0) {
+                    $shift->validateShiftParticipation();
+                    $em->persist($shift);
+                    $em->flush();
+                    $dispatcher->dispatch(ShiftValidatedEvent::NAME, new ShiftValidatedEvent($shift, $beneficiary->getMembership()));
+                }
+            }
             return $this->render('user/check.html.twig', [
                 'beneficiary' => $beneficiary,
-                'counter' => $beneficiary->getMembership()->getTimeCount($beneficiary->getMembership()->endOfCycle(0))
+                'counter' => $counter
             ]);
         }
 
@@ -318,20 +356,26 @@ class DefaultController extends Controller
     public function shiftContactFormAction(Shift $shift, Request $request, \Swift_Mailer $mailer)
     {
 
+        $em = $this->getDoctrine()->getManager();
+        $coShifters = $em->getRepository('AppBundle:Beneficiary')->findCoShifters($shift);
         $formBuilder = $this->createFormBuilder();
         $formBuilder->add('from', HiddenType::class, array('data' => $shift->getShifter()->getId()));
-        $formBuilder->add('to', HiddenType::class);
-        $formBuilder->add('message', TextareaType::class, array('attr' => array('class' => 'materialize-textarea', 'label' => 'message')));
+        $formBuilder->add('to', AutocompleteBeneficiaryCollectionType::class, [
+            'label' => 'A',
+            'data' => $coShifters,
+        ]);
+        $formBuilder->add('message', TextareaType::class, [
+            'attr' => ['class' => 'materialize-textarea'],
+            'label' => 'Message',
+            'data' => 'Bonjour XX,'.PHP_EOL."Tu n'es toujours pas arrivé pour notre créneau.".PHP_EOL."Est-ce que tout va bien ?".PHP_EOL."A très vite,".PHP_EOL.$shift->getShifter()->getFirstName().PHP_EOL.PHP_EOL."Bonjour à tou.te.s,".PHP_EOL."Je vais en être en retard pour mon créneau.".PHP_EOL."Je serai à l'épicerie d'ici XX minutes.".PHP_EOL."A tout de suite,".PHP_EOL.$shift->getShifter()->getFirstName()
+        ]);
         $formBuilder->setAction($this->generateUrl('shift_contact_form', array('id' => $shift->getId())));
         $formBuilder->setMethod('POST');
         $form = $formBuilder->getForm();
 
         if ($form->handleRequest($request)->isValid()) {
-            $to = $form->get('to')->getData();
-            $to = json_decode($to);
+            $beneficiaries = $form->get('to')->getData();
             $from = $form->get('from')->getData();
-            $em = $this->getDoctrine()->getManager();
-            $beneficiaries = $em->getRepository('AppBundle:Beneficiary')->findBy(array('id' => $to));
             $from = $em->getRepository('AppBundle:Beneficiary')->findOneBy(array('id' => $from));
             $emails = array();
             $firstnames = array();
@@ -339,9 +383,9 @@ class DefaultController extends Controller
                 $emails[] = $beneficiary->getEmail();
                 $firstnames[] = $beneficiary->getFirstname();
             }
-            $message = (new \Swift_Message('[ESPACE MEMBRES] Un message de ' . $from->getFirstName()))
+            $message = (new \Swift_Message('[ESPACE MEMBRES] Un message de ' . $from->getFirstName() . " " . substr($from->getLastName(),0,1)))
                 ->setFrom($this->getParameter('transactional_mailer_user'))
-                ->setReplyTo($this->getParameter('transactional_mailer_user'))
+                ->setReplyTo($from->getEmail())
                 ->setBcc($emails)
                 ->setBody(
                     $this->renderView(
@@ -349,6 +393,7 @@ class DefaultController extends Controller
                         array(
                             'message' => trim($form->get('message')->getData()),
                             'from' => $from,
+                            'firstnames' => $firstnames,
                             'shift' => $shift)
                     ),
                     'text/html'
@@ -363,23 +408,13 @@ class DefaultController extends Controller
                 $firstnames = $firstnames[0];
             }
 
-            $session->getFlashBag()->add('success', 'Ton message a été transmit à ' . $firstnames);
+            $session->getFlashBag()->add('success', 'Ton message a été transmis à ' . $firstnames);
             return $this->redirectToRoute('homepage');
-        } else {
-            $em = $this->getDoctrine()->getManager();
-            $shifts = $em->getRepository('AppBundle:Shift')->findBy(array('start' => $shift->getStart(), 'end' => $shift->getEnd()));
-            $coShifts = array();
-            foreach ($shifts as $s) {
-                if ($s->getBooker() != null && $s->getId() != $shift->getId()) {
-                    $coShifts[] = $s;
-                }
-            }
-            return $this->render('booking/_partial/home_shift_contactform.html.twig', array(
-                'shift' => $shift,
-                'coShifts' => $coShifts,
-                'form' => $form->createView()
-            ));
         }
+        return $this->render('booking/_partial/home_shift_contactform.html.twig', array(
+            'shift' => $shift,
+            'form' => $form->createView()
+        ));
     }
 
     /**
@@ -390,8 +425,9 @@ class DefaultController extends Controller
     {
         $job_id = $request->get('job_id');
         $buckets = array();
-        $display_end = $request->get('display_end') ? ($request->get('display_end') == 1) : false;
-        $display_on_empty = $request->get('display_on_empty') ? ($request->get('display_on_empty') == 1) : false;
+        $display_end = $request->query->has('display_end') ? ($request->get('display_end') == 1) : false;
+        $display_on_empty = $request->query->has('display_on_empty') ? ($request->get('display_on_empty') == 1) : false;
+        $title = $request->query->has('title') ? ($request->get('title') == 1) : true;
         $job = null;
         if ($job_id) {
             $em = $this->getDoctrine()->getManager();
@@ -413,7 +449,8 @@ class DefaultController extends Controller
             'job' => $job,
             'buckets' => $buckets,
             'display_end' => $display_end,
-            'display_on_empty' => $display_on_empty
+            'display_on_empty' => $display_on_empty,
+            'title' => $title
         ]);
 
     }

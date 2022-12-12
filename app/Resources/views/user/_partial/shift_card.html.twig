@@ -1,0 +1,36 @@
+<div class="card center {% if (shift.isDismissed) %}orange darken-4 white-text{% elseif (shift.isCurrent) %}deep-purple white-text{% elseif (shift.isPast) %}grey lighten-2{% else %}cyan darken-4 white-text{% endif %}">
+    <div class="card-content">
+        {% include "user/_partial/shift_card_header.html.twig" with { shift: shift } %}
+    </div>
+    {% if use_card_reader_to_validate_shifts and shift.isPastOrCurrent %}
+        {% include "user/_partial/shift_card_validation_status.html.twig" with { shift: shift } %}
+    {% endif %}
+    <div class="card-action">
+        {% if use_card_reader_to_validate_shifts and shift.isPastOrCurrent %}
+            {{ form_start(shift_validate_invalidate_forms[shift.id]) }}
+                {% if shift.wasCarriedOut %}
+                    <button type="submit" class="btn orange" title="Invalider la participation">
+                        <i class="material-icons left">highlight_off</i>Invalider la participation
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn green" title="Valider la participation">
+                        <i class="material-icons left">check_circle</i>Valider la participation
+                    </button>
+                {% endif %}
+            {{ form_end(shift_validate_invalidate_forms[shift.id]) }}
+        {% endif %}
+        {% if is_granted('free',shift) %}
+            {{ form_start(shift_free_forms[shift.id]) }}
+                {% if shift.isPast %}
+                    <button type="submit" class="btn red" title="Supprimer la participation">
+                        <i class="material-icons left">delete</i>Supprimer la participation
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn orange" title="Libérer">
+                        <i class="material-icons left">lock_open</i>Libérer
+                    </button>
+                {% endif %}
+            {{ form_end(shift_free_forms[shift.id]) }}
+        {% endif %}
+    </div>
+</div>

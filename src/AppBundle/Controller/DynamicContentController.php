@@ -32,15 +32,24 @@ class DynamicContentController extends Controller
      *
      * @Route("/", name="dynamic_content_list")
      * @Method("GET")
-     * @Security("has_role('ROLE_ADMIN')")
+     * @Security("has_role('ROLE_PROCESS_MANAGER')")
      */
     public function listAction(Request $request)
     {
-
         $em = $this->getDoctrine()->getManager();
         $dynamicContents = $em->getRepository('AppBundle:DynamicContent')->findAll();
+        $dynamicContentsByType = array();
+
+        foreach ($dynamicContents as $dynamicContent) {
+            $type = $dynamicContent->getType();
+            if (!isset($dynamicContentsByType[$type])) {
+                $dynamicContentsByType[$type] = array();
+            }
+            $dynamicContentsByType[$type][] = $dynamicContent;
+        }
+
         return $this->render('admin/content/list.html.twig', array(
-            'dynamicContents' => $dynamicContents,
+            'dynamicContentsByType' => $dynamicContentsByType,
         ));
     }
 
@@ -49,12 +58,10 @@ class DynamicContentController extends Controller
      *
      * @Route("/{id}/edit", name="dynamic_content_edit")
      * @Method({"GET","POST"})
-     * @Security("has_role('ROLE_ADMIN')")
+     * @Security("has_role('ROLE_PROCESS_MANAGER')")
      */
     public function dynamicContentEditAction(Request $request, DynamicContent $dynamicContent)
     {
-        $this->denyAccessUnlessGranted('edit', $dynamicContent);
-
         $form = $this->createForm('AppBundle\Form\DynamicContentType', $dynamicContent);
         $form->handleRequest($request);
 
@@ -64,11 +71,13 @@ class DynamicContentController extends Controller
             if ($dynamicContent->getContent() == null) {
                 $dynamicContent->setContent('');
             }
+            $current_user = $this->get('security.token_storage')->getToken()->getUser();
+            $dynamicContent->setUpdatedBy($current_user);
             $em->persist($dynamicContent);
             $em->flush();
-            $session->getFlashBag()->add('success', 'Contenu dynamique édité');
-            return $this->redirectToRoute('dynamic_content_list');
 
+            $session->getFlashBag()->add('success', 'Contenu dynamique édité !');
+            return $this->redirectToRoute('dynamic_content_list');
         }
 
         return $this->render('admin/content/edit.html.twig', array(

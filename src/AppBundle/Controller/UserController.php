@@ -19,16 +19,7 @@ use AppBundle\Form\NoteType;
 use AppBundle\Form\UserAdminType;
 use FOS\UserBundle\Event\UserEvent;
 use FOS\UserBundle\FOSUserEvents;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
-use Symfony\Component\Form\Extension\Core\Type\IntegerType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\EmailType;
-use Symfony\Component\Form\Extension\Core\Type\HiddenType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
-use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
-use Symfony\Component\Form\Extension\Core\Type\SubmitType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Form;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -163,8 +154,8 @@ class UserController extends Controller
      * Creates a new user entity.
      *
      * @Route("/quick_new", name="user_quick_new")
-     * @Security("has_role('ROLE_USER')")
      * @Method({"GET", "POST"})
+     * @Security("has_role('ROLE_USER_VIEWER')")
      */
     public function quickNewAction(Request $request, \Swift_Mailer $mailer)
     {
@@ -197,51 +188,37 @@ class UserController extends Controller
     }
 
     /**
-     * Recall new unconfirmed user.
-     *
-     * @Route("/quick_new/{id}/recall", name="user_quick_new_recall")
-     * @Security("has_role('ROLE_ADMIN')")
-     * @Method({"GET"})
-     */
-    public function quickNewRecallAction(Request $request,AnonymousBeneficiary $anonymousBeneficiary)
-    {
-
-        $dispatcher = $this->get('event_dispatcher');
-        $dispatcher->dispatch(AnonymousBeneficiaryRecallEvent::NAME, new AnonymousBeneficiaryRecallEvent($anonymousBeneficiary));
-
-        $anonymousBeneficiary->setRecallDate(new \DateTime());
-        $em = $this->getDoctrine()->getManager();
-        $em->persist($anonymousBeneficiary);
-        $em->flush();
-
-        $session = new Session();
-        $session->getFlashBag()->add('success', 'La relance a été envoyée !');
-
-        $referer = $request->headers->get('referer');
-
-        return new RedirectResponse($referer);
-    }
-
-
-    /**
      * remove role of user
      *
      * @Route("/{id}/removeRole/{role}", name="user_remove_role")
+     * @Security("has_role('ROLE_ADMIN')")
      * @Method({"GET"})
+     * @param User $user
+     * @param $role
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse
      */
     public function removeRoleAction(User $user, $role)
     {
-        $this->denyAccessUnlessGranted('role_remove', $user);
         $session = new Session();
         $em = $this->getDoctrine()->getManager();
+        $current_user = $this->getCurrentAppUser();
+
+        // cannot remove a nonexistant role
         if (!$user->hasRole($role)) {
-            $session->getFlashBag()->add('success', 'Cet utilisateur ne possède pas le role ' . $role);
+            $session->getFlashBag()->add('warning', $user . ' ne possède pas le rôle ' . $role);
             return $this->redirectToShow($user);
         }
+        // only ROLE_SUPER_ADMIN can remove ROLE_ADMIN to users
+        if ($role == 'ROLE_ADMIN' && !$current_user->hasRole('ROLE_SUPER_ADMIN')) {
+            $session->getFlashBag()->add('warning', 'Vous n\'avez pas les droits pour retirer le rôle ' . $role);
+            return $this->redirectToShow($user);
+        }
+
         $user->removeRole($role);
         $em->persist($user);
         $em->flush();
-        $session->getFlashBag()->add('success', 'Le Role ' . $role . ' a bien été retiré');
+
+        $session->getFlashBag()->add('success', 'Le rôle ' . $role . ' a bien été retiré à ' . $user);
         return $this->redirectToShow($user);
     }
 
@@ -249,6 +226,7 @@ class UserController extends Controller
      * add role of user
      *
      * @Route("/{id}/addRole/{role}", name="user_add_role")
+     * @Security("has_role('ROLE_ADMIN')")
      * @Method({"GET"})
      * @param User $user
      * @param $role
@@ -256,17 +234,26 @@ class UserController extends Controller
      */
     public function addRoleAction(User $user, $role)
     {
-        $this->denyAccessUnlessGranted('role_add', $user);
         $session = new Session();
         $em = $this->getDoctrine()->getManager();
+        $current_user = $this->getCurrentAppUser();
+
+        // cannot add an existing role
         if ($user->hasRole($role)) {
-            $session->getFlashBag()->add('success', 'Cet utilisateur possède déjà le role ' . $role);
+            $session->getFlashBag()->add('warning', $user . ' possède déjà le rôle ' . $role);
             return $this->redirectToShow($user);
         }
+        // only ROLE_SUPER_ADMIN can add ROLE_ADMIN to users
+        if ($role == 'ROLE_ADMIN' && !$current_user->hasRole('ROLE_SUPER_ADMIN')) {
+            $session->getFlashBag()->add('warning', 'Vous n\'avez pas les droits pour ajouter le rôle ' . $role);
+            return $this->redirectToShow($user);
+        }
+
         $user->addRole($role);
         $em->persist($user);
         $em->flush();
-        $session->getFlashBag()->add('success', 'Le Role ' . $role . ' a bien été ajouté');
+
+        $session->getFlashBag()->add('success', 'Le rôle ' . $role . ' a bien été ajouté à ' . $user);
         return $this->redirectToShow($user);
     }
 
@@ -281,7 +268,7 @@ class UserController extends Controller
         $session = new Session();
         $membership = $this->getCurrentAppUser()->getBeneficiary()->getMembership();
         if (!$this->get('membership_service')->canRegister($membership)) {
-            $session->getFlashBag()->add('warning', 'Pas besoin de réadhérer pour le moment :)');
+            $session->getFlashBag()->add('warning', 'Pas besoin de ré-adhérer pour le moment :)');
             return $this->redirectToRoute('homepage');
         }
         return $this->render('user/self_register.html.twig');
@@ -319,7 +306,7 @@ class UserController extends Controller
             $session->getFlashBag()->add('error', 'ce client n\'existe pas');
         }
 
-        return $this->redirectToRoute('fos_user_profile_edit');
+        return $this->redirectToRoute('fos_user_profile_show');
     }
 
     /**
@@ -350,33 +337,63 @@ class UserController extends Controller
     }
 
     /**
+     * List all unconfirmed users.
+     *
      * @Route("/pre_users", name="pre_user_index")
-     * @Security("has_role('ROLE_USER')")
      * @Method({"GET"})
+     * @Security("has_role('ROLE_USER_VIEWER')")
      */
     public function preUsersAction()
     {
         /** @var AnonymousBeneficiary[] $anonymousBeneficiaries */
         $anonymousBeneficiaries = $this->getDoctrine()->getRepository(AnonymousBeneficiary::class)->findBy(
             [],
-            ['created_at' => 'DESC']
+            ['createdAt' => 'DESC']
         );
+
         return $this->render('admin/pre_user/list.html.twig', array(
             'anonymousBeneficiaries' => $anonymousBeneficiaries,
         ));
     }
 
     /**
+     * Recall unconfirmed user.
+     *
+     * @Route("/pre_users/{id}/recall", name="pre_user_recall")
+     * @Security("has_role('ROLE_USER_VIEWER')")
+     * @Method({"GET"})
+     */
+    public function quickNewRecallAction(Request $request, AnonymousBeneficiary $anonymousBeneficiary)
+    {
+        $dispatcher = $this->get('event_dispatcher');
+        $dispatcher->dispatch(AnonymousBeneficiaryRecallEvent::NAME, new AnonymousBeneficiaryRecallEvent($anonymousBeneficiary));
+
+        $anonymousBeneficiary->setRecallDate(new \DateTime());
+        $em = $this->getDoctrine()->getManager();
+        $em->persist($anonymousBeneficiary);
+        $em->flush();
+
+        $session = new Session();
+        $session->getFlashBag()->add('success', 'La relance a été envoyée !');
+
+        $referer = $request->headers->get('referer');
+
+        return new RedirectResponse($referer);
+    }
+
+    /**
+     * Delete unconfirmed user.
+     * 
      * @Route("/pre_users/{id}/delete", name="pre_user_delete")
      * @Security("has_role('ROLE_USER_MANAGER')")
      * @Method({"GET"})
      */
-    public function preUsersDeleteAction(AnonymousBeneficiary $beneficiary, SessionInterface $session)
+    public function preUsersDeleteAction(AnonymousBeneficiary $anonymousBeneficiary, SessionInterface $session)
     {
-        $this->getDoctrine()->getManager()->remove($beneficiary);
+        $this->getDoctrine()->getManager()->remove($anonymousBeneficiary);
         $this->getDoctrine()->getManager()->flush();
 
-        $session->getFlashBag()->add('success', "L'adhésion a bien été supprimée");
+        $session->getFlashBag()->add('success', "La pré-adhésion a bien été supprimée");
 
         return $this->redirectToRoute('pre_user_index');
     }

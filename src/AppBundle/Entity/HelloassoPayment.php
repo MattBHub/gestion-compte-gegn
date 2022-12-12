@@ -27,7 +27,7 @@ class HelloassoPayment
      *
      * @ORM\Column(name="created_at", type="datetime")
      */
-    private $created_at;
+    private $createdAt;
 
     /**
      * @var int
@@ -56,7 +56,6 @@ class HelloassoPayment
      * @ORM\Column(name="amount", type="float")
      */
     private $amount;
-
 
     /**
      * @var string
@@ -92,19 +91,20 @@ class HelloassoPayment
      */
     private $registration;
 
-
-    /***
+    /**
      * @return string
      */
-    public function __toString(){
+    public function __toString()
+    {
         return '#'.$this->getId().' de '.$this->getEmail().' le '. $this->getCreatedAt()->format('d-M-Y à H:i').' '.$this->getAmount().' €';
     }
+
     /**
      * @ORM\PrePersist
      */
     public function setCreatedAtValue()
     {
-        $this->created_at = new \DateTime();
+        $this->createdAt = new \DateTime();
     }
 
     /**
@@ -118,27 +118,27 @@ class HelloassoPayment
     }
 
     /**
-     * Set createdAt.
+     * Set createdAt
      *
      * @param \DateTime $createdAt
      *
      * @return HelloassoPayment
      */
-    public function setCreatedAt($created_at)
+    public function setCreatedAt($date)
     {
-        $this->created_at = $created_at;
+        $this->createdAt = $date;
 
         return $this;
     }
 
     /**
-     * Get createdAt.
+     * Get createdAt
      *
      * @return \DateTime
      */
     public function getCreatedAt()
     {
-        return $this->created_at;
+        return $this->createdAt;
     }
 
     /**

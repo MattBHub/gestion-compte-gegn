@@ -178,7 +178,11 @@ class Job
 
     /**
      * Set min_shifter_alert
+<<<<<<<<< Temporary merge branch 1
+     * 
+=========
      *
+>>>>>>>>> Temporary merge branch 2
      * @param int $min_shifter_alert
      * @return Job
      */
@@ -278,7 +282,11 @@ class Job
 
     /**
      * Get description
+<<<<<<<<< Temporary merge branch 1
+     * 
+=========
      *
+>>>>>>>>> Temporary merge branch 2
      * @return string
      */
     public function getDescription(): string
@@ -288,7 +296,11 @@ class Job
 
     /**
      * Set description
+<<<<<<<<< Temporary merge branch 1
+     * 
+=========
      *
+>>>>>>>>> Temporary merge branch 2
      * @param string $description
      * @return Job
      */

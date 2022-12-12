@@ -6,6 +6,7 @@ use AppBundle\Entity\Address;
 use AppBundle\Entity\AnonymousBeneficiary;
 use AppBundle\Entity\Beneficiary;
 use AppBundle\Entity\Client;
+use AppBundle\Entity\Formation;
 use AppBundle\Entity\Membership;
 use AppBundle\Entity\Note;
 use AppBundle\Entity\Registration;
@@ -756,6 +757,16 @@ class MembershipController extends Controller
 
         $member->addRegistration($registration);
 
+        if ($member->getMainBeneficiary() == null){
+            $b = new Beneficiary();
+            // ajout MattB
+            $b->setAddress($this->createDefaultAdress());
+            $formations = $this->createDefaultFormations();
+            foreach ($formations as $formation){
+                $b->addFormation($formation);
+            }
+            $member->setMainBeneficiary($b);
+        }
         $form = $this->createForm(MembershipType::class, $member);
         $form->handleRequest($request);
 
@@ -1057,7 +1068,15 @@ class MembershipController extends Controller
     private function createNewBeneficiaryForm(Membership $member)
     {
         $newBeneficiaryAction = $this->generateUrl('member_new_beneficiary', array('member_number' => $member->getMemberNumber()));
-        return $this->createForm(BeneficiaryType::class, new Beneficiary(), array('action' => $newBeneficiaryAction));
+        $beneficiary = new Beneficiary();
+        // ajout MattB
+        $beneficiary->setAddress($this->createDefaultAdress());
+        $formations = $this->createDefaultFormations();
+        foreach ($formations as $formation){
+            $beneficiary->addFormation($formation);
+        }
+
+        return $this->createForm(BeneficiaryType::class, $beneficiary, array('action' => $newBeneficiaryAction));
     }
 
     /**
@@ -1205,5 +1224,24 @@ class MembershipController extends Controller
                                          ])
                                          ->setMethod('POST')
                                          ->getForm();
+    }
+
+    private function createDefaultAdress(){
+        $address = new Address();
+        $address->setCity("-");
+        $address->setStreet1("-");
+        $address->setStreet2("-");
+        $address->setZipcode("00000");
+        return $address;
+    }
+
+    private function createDefaultFormations(){
+        $formations = [];
+        $em = $this->getDoctrine()->getManager();
+        if ($this->container->hasParameter("default_formation_ids")) {
+            $formationsIds = $this->getParameter('default_formation_ids');
+            $formations = $em->getRepository(Formation::class)->findBy(["id" => $formationsIds]);
+        }
+        return $formations;
     }
 }

@@ -70,6 +70,9 @@ class ShiftGenerateCommand extends ContainerAwareCommand
                 ->setParameter('dow', $dayOfWeek)
                 ->orderBy('p.start');
             $periods = $qb->getQuery()->getResult();
+
+            echo "\nCréation du : ". $from->format("d-m-Y H:i"). " au : ". $to->format("d-m-Y H:i");
+
             foreach ($periods as $period) {
 
                 $shift = new Shift();
@@ -78,7 +81,14 @@ class ShiftGenerateCommand extends ContainerAwareCommand
                 $end = date_create_from_format('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $period->getEnd()->format('H:i'));
                 $shift->setEnd($end);
 
+                $lastStart = $this->lastCycleDate($start);
+                $lastEnd = $this->lastCycleDate($end);
+
+                echo "\n Copie du créneau du : ". $lastStart->format("d-m-Y") . " de " .$lastStart->format("H:i")." à : ". $lastEnd->format("H:i");
+
                 foreach ($period->getPositions() as $position) {
+
+                    echo "\n  Poste : ". $position->getFormation();
 
                     // Semaine #A-B-C-D
                     // Ignorer les periodes en dehors du cycle semaine
@@ -89,13 +99,15 @@ class ShiftGenerateCommand extends ContainerAwareCommand
 
                     $already_generated = $em->getRepository('AppBundle:Shift')->findBy(array('start' => $start, 'end' => $end, 'job' => $period->getJob(), 'position' => $position));
                     if (!$already_generated) {
-                        $lastStart = $this->lastCycleDate($start);
-                        $lastEnd = $this->lastCycleDate($end);
                         $last_cycle_shift = $em->getRepository('AppBundle:Shift')->findOneBy(array('start' => $lastStart, 'end' => $lastEnd, 'job' => $period->getJob(), 'position' => $position));
                         $current_shift = clone $shift;
                         $current_shift->setJob($period->getJob());
                         $current_shift->setFormation($position->getFormation());
                         $current_shift->setPosition($position);
+                        $current_shift->setShifter(null);
+                        $current_shift->setBookedTime(null);
+                        $current_shift->setBooker(null);
+
                         // si c'est un créneau fixe
                         if ($use_fly_and_fixed && $position->getShifter() != null &&
                             !$position->getShifter()->getMembership()->isExemptedFromShifts($current_shift->getStart())) {
@@ -109,10 +121,6 @@ class ShiftGenerateCommand extends ContainerAwareCommand
                             $current_shift->setLastShifter($last_cycle_shift->getShifter());
                             $reservedShifts[$count] = $current_shift;
                             $formerShifts[$count] = $last_cycle_shift;
-                        } else {
-                            $current_shift->setShifter(null);
-                            $current_shift->setBookedTime(null);
-                            $current_shift->setBooker(null);
                         }
 
                         $em->persist($current_shift);

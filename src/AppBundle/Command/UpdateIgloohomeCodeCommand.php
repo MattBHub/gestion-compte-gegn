@@ -32,6 +32,8 @@ class UpdateIgloohomeCodeCommand extends ContainerAwareCommand
         $start = $input->getArgument('start');
         $end = $input->getArgument('end');
 
+        $today = new \DateTime();
+
         // Create a new temporary code using the Igloohome API
         $client = HttpClient::create(['headers' => ['X-IGLOOHOME-APIKEY' => $api_key]]);
         $response = $client->request('POST', 'https://partnerapi.igloohome.co/v1/locks/' . $lock_id . '/lockcodes', [
@@ -39,7 +41,7 @@ class UpdateIgloohomeCodeCommand extends ContainerAwareCommand
                 'durationCode' => 3,
                 'startDate' => $start,
                 'endDate' => $end,
-                'description' => $start
+                'description' => $today->format('d/m/Y')." (auto)"
             ]
         ]);
 
@@ -80,7 +82,7 @@ class UpdateIgloohomeCodeCommand extends ContainerAwareCommand
         $code->setClosed(false);
         $code->setCreatedAt(new \DateTime('now'));
         $code->setRegistrar($adminUSer);
-        
+
         $em->persist($code);
 
         // Close the old open codes

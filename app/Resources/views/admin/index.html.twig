@@ -23,6 +23,9 @@
 
             {% if is_granted("ROLE_USER_MANAGER") %}
                 <h6><i class="material-icons">people</i>&nbsp;Membres</h6>
+                <a href="{{ path('member_new') }}" class="waves-effect waves-light btn">
+                    <i class="material-icons left">person_add</i>Nouveau membre
+                </a>
                 <a href="{{ path("user_index") }}" class="waves-effect waves-light btn">
                     <i class="material-icons left">people</i>Gérer les adhérents
                 </a>
@@ -32,17 +35,17 @@
                 <a href="{{ path("admin_membershipshiftexemption_index") }}" class="waves-effect waves-light btn">
                     <i class="material-icons left">beach_access</i>Gérer les exemptions de bénévolat
                 </a>
-            {% endif %}
+           {% endif %}
             {% if is_granted("ROLE_ADMIN") %}
-                <a href="{{ path("member_join") }}" class="waves-effect waves-light btn">
-                    <i class="material-icons left">call_merge</i>Joindre deux comptes
-                </a>
-                <a href="{{ path("admin_commissions") }}" class="waves-effect waves-light btn">
-                    <i class="material-icons left">tune</i>Gérer les commissions
-                </a>
-                <a href="{{ path("admin_formations") }}" class="waves-effect waves-light btn">
-                    <i class="material-icons left">tune</i>Gérer les formations
-                </a>
+                <a href="{{ path("member_join") }}" class="waves-effect waves-light btn"><i class="material-icons left">call_merge</i>Joindre deux comptes</a>
+                <a href="{{ path("admin_commissions") }}" class="waves-effect waves-light btn"><i class="material-icons left">tune</i>Gérer les commissions</a>
+                <a href="{{ path("admin_formations") }}" class="waves-effect waves-light btn"><i class="material-icons left">tune</i>Gérer les formations</a>
+            {% endif %}
+
+            {% if is_granted("ROLE_FINANCE_MANAGER") %}
+                <h6><i class="material-icons">attach_money</i>&nbsp;Finances</h6>
+                <a href="{{ path("registrations") }}" class="waves-effect waves-light btn indigo"><i class="material-icons left">attach_money</i>Gérer les Adhésions / Réadhésions</a>
+                <a href="{{ path("helloasso_payments") }}" class="waves-effect waves-light btn indigo"><i class="material-icons left">settings_ethernet</i>Paiements helloasso</a>
             {% endif %}
 
             {% if is_granted("ROLE_SHIFT_MANAGER") %}
@@ -58,6 +61,12 @@
                 </a>
             {% endif %}
             {% if is_granted("ROLE_ADMIN") %}
+                <a href="{{ path("admin_shiftexemption_index") }}" class="waves-effect waves-light btn orange">
+                    <i class="material-icons left">beach_access</i>les motif d'exemptions
+                </a>
+                <a href="{{ path("job_list") }}" class="waves-effect waves-light btn orange">
+                    <i class="material-icons left">person</i>les postes de bénévolat
+                </a>
                 <a href="{{ path("admin_shiftexemption_index") }}" class="waves-effect waves-light btn orange">
                     <i class="material-icons left">beach_access</i>les motif d'exemptions
                 </a>

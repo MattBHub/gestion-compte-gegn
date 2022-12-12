@@ -8,36 +8,36 @@
         <h6>{{ bucket.start|date_fr_long }} de {{ bucket.start|date('G\\hi') }} à {{ bucket.end|date('G\\hi') }}</h6>
 
         {% if not shift_service.canBookDuration(beneficiary, bucket.getFirst.getDuration, cycle) %}
-          <div class="alert card red lighten-4 red-text text-darken-4">
-            <div class="card-content">
-              {% if not shift_service.canBookDuration(beneficiary, shift_service.getMinimalShiftDuration, cycle) %}
-                <span class="card-title">Attention, tu as déjà fait ton quota d'heures sur ce cycle.</span>
-                <p>Ce créneau ne sera pas comptabilisé dans ton calcul d'heures car seul un maximum de {{ due_duration_by_cycle | duration_from_minutes }} est comptabilisé par cycle.</p>
-              {% else %}
-                <span class="card-title">Attention, avec ce créneau tu dépasseras les {{ due_duration_by_cycle | duration_from_minutes }} de bénévolat sur ton cycle.</span>
-                <p>Ce créneau ne sera qu'en partie comptabilisé dans ton calcul d'heures, car seul un maximum de {{ due_duration_by_cycle | duration_from_minutes }} est comptabilisé par cycle.</p>
-              {% endif %}
+            <div class="alert card red lighten-4 red-text text-darken-4">
+                <div class="card-content">
+                    {% if not shift_service.canBookDuration(beneficiary, shift_service.getMinimalShiftDuration, cycle) %}
+                        <span class="card-title">Attention, tu as déjà fait ton quota d'heures sur ce cycle.</span>
+                        <p>Ce créneau ne sera pas comptabilisé dans ton calcul d'heures car seul un maximum de {{ due_duration_by_cycle | duration_from_minutes }} est comptabilisé par cycle.</p>
+                    {% else %}
+                        <span class="card-title">Attention, avec ce créneau tu dépasseras les {{ due_duration_by_cycle | duration_from_minutes }} de bénévolat sur ton cycle.</span>
+                        <p>Ce créneau ne sera qu'en partie comptabilisé dans ton calcul d'heures, car seul un maximum de {{ due_duration_by_cycle | duration_from_minutes }} est comptabilisé par cycle.</p>
+                    {% endif %}
+                </div>
             </div>
-          </div>
         {% endif %}
 
         {% if availableShifts | length == 1 %}
-            {% if not firstBookable.formation and beneficiary.formations | length %}
-                <div class="row">
-                    <div class="col s12">
-                        <div class="card-panel teal warning">
-                            <span class="white-text">
-                                <i class="material-icons">warning</i>
-                                Ce créneau n'est <b>pas</b> qualifié.
-                                <br>
-                                {{ beneficiary.firstname }} a {% if beneficiary.formations | length == 1 %}une formation{% else %}des formations{% endif %} ({{ beneficiary.formations | join(', ')}}).
-                                <br>
-                                Tes compétences sont précieuses, pense si possible à les valoriser sur <b>un créneau qualifié</b>.
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
+            {#            {% if not firstBookable.formation and beneficiary.formations | length %}#}
+            {#                <div class="row">#}
+            {#                    <div class="col s12">#}
+            {#                        <div class="card-panel teal warning">#}
+            {#                            <span class="white-text">#}
+            {#                                <i class="material-icons">warning</i>#}
+            {#                                Ce créneau n'est <b>pas</b> qualifié.#}
+            {#                                <br>#}
+            {#                                {{ beneficiary.firstname }} a {% if beneficiary.formations | length == 1 %}une formation{% else %}des formations{% endif %} ({{ beneficiary.formations | join(', ')}}).#}
+            {#                                <br>#}
+            {#                                Tes compétences sont précieuses, pense si possible à les valoriser sur <b>un créneau qualifié</b>.#}
+            {#                            </span>#}
+            {#                        </div>#}
+            {#                    </div>#}
+            {#                </div>#}
+            {#            {% endif %}#}
             {% if firstBookable.isDismissed %}
                 <h6><i class="material-icons">star</i> Ceci est un créneau à reprendre</h6>
             {% endif %}
@@ -48,7 +48,7 @@
         {% else %}
             {% if display_name_shifters %}
                 {% if nbBookableShifts < nbShifts %}
-                    <p>Places déjà occupées : </p>
+                    <p style="color: #5f5a5a; font-weight: 400;">Places déjà occupées : </p>
                     {% for shift in bucket.sortedShifts() %}
                         <div>
                             {% if shift.shifter and not shift.isDismissed() %}
@@ -71,7 +71,7 @@
                         {% if availableShift.formation %}
                             <span>{{ availableShift.formation.name }}</span>
                         {% else %}
-                            <span>sans formation particulière</span>
+                            En formation
                         {% endif %}
                     </label>
                 </div>

@@ -56,8 +56,10 @@ class CodeController extends Controller
             $codes = $em->getRepository('AppBundle:Code')->findBy(array(),array('createdAt'=>'DESC'),100);
             $old_codes =  null;
         }else{
-            $codes = $em->getRepository('AppBundle:Code')->findBy(array('closed'=>0),array('createdAt'=>'DESC'),10);
-            $old_codes = $em->getRepository('AppBundle:Code')->findBy(array('closed'=>1),array('createdAt'=>'DESC'),3);
+//            $codes = $em->getRepository('AppBundle:Code')->findBy(array('closed'=>0),array('createdAt'=>'DESC'),10);
+//            $old_codes = $em->getRepository('AppBundle:Code')->findBy(array('closed'=>1),array('createdAt'=>'DESC'),3);
+            $codes = $em->getRepository('AppBundle:Code')->findBy(array('closed'=>0),array('createdAt'=>'DESC'),1);
+            $old_codes =  null;
         }
 
         if (!count($codes)){

@@ -39,7 +39,7 @@
   font-weight: bold;
 }
 .postit .info {
-  font-family: "Raleway", sans-serif;
+  /*font-family: "Raleway", sans-serif;*/
   display: block;
   margin-top: 5px;
   padding: 3px;

@@ -25,8 +25,10 @@
                             {"from": {{ due_duration_hour * -3 }}, "to": {{ due_duration_hour * -2 }}, "color": "rgba(200, 50, 50, .95)"},
                             {"from": {{ due_duration_hour * -2 }}, "to": {{ due_duration_hour * -1 }}, "color": "rgba(200, 50, 50, .75)"},
                             {"from": {{ due_duration_hour * -1 }}, "to": 0, "color": "yellow"},
-                            {"from": 0, "to": {{ due_duration_hour }}, "color": "#8bc34a55"}{% if (member.beneficiaries | length) > 1 %},{"from": {{ due_duration_hour }}, "to": {{ due_duration_hour * 2 }}, "color": "#8bc34a"}{% endif %}
-                        ]'
+                            {"from": 0, "to": {{ due_duration_hour }},  "color": "yellow"},
+                            {"from": {{ due_duration_hour }}, "to": {{ due_duration_hour * 2 }}, "color": "#8bc34a55"},
+                            {"from": {{ due_duration_hour * 2}}, "to": {{ due_duration_hour * 3 }}, "color": "#8bc34a"}
+                         ]'
                         data-color-plate="#fff"
                         data-border-shadow-width="0"
                         data-borders="false"
@@ -75,7 +77,7 @@
                     </p>
                 {% elseif (allow_extra_shifts) %}
                     <p>
-                        {% if member.beneficiaries | length > 1 %}
+                        {% if member.beneficiaries | length %}
                             Vous pouvez
                         {% else %}
                             Tu peux

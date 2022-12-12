@@ -2,6 +2,7 @@
 // src/AppBundle/Command/SendShiftAlertsCommand.php
 namespace AppBundle\Command;
 
+use AppBundle\Entity\Shift;
 use AppBundle\Entity\ShiftAlert;
 use AppBundle\Entity\ShiftBucket;
 use DateTime;
@@ -61,12 +62,15 @@ class SendShiftAlertsCommand extends ContainerAwareCommand
         // Build buckets from shifts
         $buckets = array();
         foreach ($shifts as $shift) {
-            $key = $shift->getIntervalCode().$shift->getJob()->getId();
-            if (!isset($buckets[$key])) {
+            $interval = $shift->getIntervalCode();
+            if (!isset($buckets[$interval])) {
                 $bucket = new ShiftBucket();
-                $buckets[$key] = $bucket;
+                $buckets[$interval] = $bucket;
             }
-            $buckets[$key]->addShift($shift);
+
+            // ne prend que les shifts avec formation
+            if ($shift->getFormation() != null)
+                $buckets[$interval]->addShift($shift);
         }
 
         $alerts = array();

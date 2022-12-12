@@ -220,20 +220,21 @@ class EmailingEventListener
      */
     public function onShiftBooked(ShiftBookedEvent $event)
     {
-        $shift = $event->getShift();
-
-        $archive = (new \Swift_Message('[ESPACE MEMBRES] BOOKING'))
-            ->setFrom($this->shiftEmail['address'], $this->shiftEmail['from_name'])
-            ->setTo($this->shiftEmail['address'])
-            ->setReplyTo($shift->getShifter()->getEmail())
-            ->setBody(
-                $this->renderView(
-                    'emails/new_booking.html.twig',
-                    array('shift' => $shift)
-                ),
-                'text/html'
-            );
-        $this->mailer->send($archive);
+        $this->logger->info("new Shift booked");
+//        $shift = $event->getShift();
+//
+//        $archive = (new \Swift_Message('[ESPACE MEMBRES] BOOKING'))
+//            ->setFrom($this->shiftEmail['address'], $this->shiftEmail['from_name'])
+//            ->setTo($this->shiftEmail['address'])
+//            ->setReplyTo($shift->getShifter()->getEmail())
+//            ->setBody(
+//                $this->renderView(
+//                    'emails/new_booking.html.twig',
+//                    array('shift' => $shift)
+//                ),
+//                'text/html'
+//            );
+//        $this->mailer->send($archive);
     }
 
     /**
@@ -243,20 +244,20 @@ class EmailingEventListener
     public function onShiftDeleted(ShiftDeletedEvent $event)
     {
         $this->logger->info("Emailing Listener: onShiftDeleted");
-        $shift = $event->getShift();
-        if ($shift->getShifter()) { //warn shifter
-            $warn = (new \Swift_Message('[ESPACE MEMBRES] Crénéau supprimé'))
-                ->setFrom($this->shiftEmail['address'], $this->shiftEmail['from_name'])
-                ->setTo($shift->getShifter()->getEmail())
-                ->setBody(
-                    $this->renderView(
-                        'emails/deleted_shift.html.twig',
-                        array('shift' => $shift)
-                    ),
-                    'text/html'
-                );
-            $this->mailer->send($warn);
-        }
+//        $shift = $event->getShift();
+//        if ($shift->getShifter()) { //warn shifter
+//            $warn = (new \Swift_Message('[ESPACE MEMBRES] Crénéau supprimé'))
+//                ->setFrom($this->shiftEmail['address'], $this->shiftEmail['from_name'])
+//                ->setTo($shift->getShifter()->getEmail())
+//                ->setBody(
+//                    $this->renderView(
+//                        'emails/deleted_shift.html.twig',
+//                        array('shift' => $shift)
+//                    ),
+//                    'text/html'
+//                );
+//            $this->mailer->send($warn);
+//        }
     }
 
     /**

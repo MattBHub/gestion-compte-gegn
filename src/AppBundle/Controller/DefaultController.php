@@ -150,7 +150,7 @@ class DefaultController extends Controller
     public function scheduleAction()
     {
         return $this->render('booking/schedule.html.twig', [
-            'bucketsByDay' => $this->getSchedule(),
+            'bucketsByDay' => $this->getSchedule(-1),
             'hours' => $this->getHours()
         ]);
     }
@@ -163,13 +163,14 @@ class DefaultController extends Controller
         return $hours;
     }
 
-    private function getSchedule() {
+    private function getSchedule(int $start = 0, int $end = 7) {
         $em = $this->getDoctrine()->getManager();
         $today = strtotime('today');
         $from = new \DateTime();
         $from->setTimestamp($today);
+        $from->modify('+'.$start.' days');
         $to = new \DateTime();
-        $to->modify('+7 days');
+        $to->modify('+'.$end.'days');
         $shifts = $em->getRepository('AppBundle:Shift')->findFrom($from, $to);
         $bucketsByDay = array();
         foreach ($shifts as $shift) {

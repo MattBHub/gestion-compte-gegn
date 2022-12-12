@@ -16,6 +16,5 @@
         </div>
     </div>
 {% elseif (is_granted("view",codes | first) and not is_granted("generate",codes | first)) %}
-    <a href="{{ path("codes_list") }}" class="waves-effect waves-light btn deep-purple lighten-1"><i class="material-icons left">vpn_key</i>Voir
-        code{% if codes | length > 1 %}s{% endif %} boîtier à clefs</a>
+    <a href="{{ path("codes_list") }}" style="min-width: 240px" class="waves-effect waves-light btn deep-purple lighten-1"><i class="material-icons left">vpn_key</i>Code (boîte clé)</a>
 {% endif %}

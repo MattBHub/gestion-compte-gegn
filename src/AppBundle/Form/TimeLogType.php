@@ -4,6 +4,7 @@ namespace AppBundle\Form;
 
 use AppBundle\Entity\TimeLog;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -20,6 +21,15 @@ class TimeLogType extends AbstractType
     {
         $builder->add('description', TextareaType::class, array('required' => true, 'label' => 'Motif', 'attr' => array('class' => 'materialize-textarea')));
         $builder->add('time', NumberType::class, array('required' => true, 'label' => 'Valeur négative ou positive en minutes'));
+        $builder->add('date', DateType::class,array('required' => true,
+            'input' => 'datetime',
+            'data' => new \DateTime(),
+            'widget' => 'single_text',
+            'label' => 'Date effet',
+            'attr' => [
+                'class' => 'datepicker'
+            ]
+        ));
     }
 
     /**

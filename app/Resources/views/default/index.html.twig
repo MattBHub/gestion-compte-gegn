@@ -62,7 +62,7 @@
             {% if app.user.beneficiary.membership | uptodate %}
                 <div class="col s12 l6">
                     <div class="homebox">
-                        <h5><span class="white">{% if app.user.beneficiary.membership.beneficiaries | length %}Votre{% else %}Mon{% endif %} Bénévolat</span></h5>
+                        <h5><span class="white">{% if app.user.beneficiary.membership.beneficiaries | length %}Votre{% else %}Ma{% endif %} participation</span></h5>
                         {% include "booking/home_dashboard.html.twig" %}{# with { beneficiary: app.user.beneficiary } #}
                     </div>
                 </div>

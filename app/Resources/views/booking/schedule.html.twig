@@ -1,14 +1,72 @@
 {% extends 'layout.html.twig' %}
 
-{% block title %}Planning - {{ site_name }}{% endblock %}
+{% block title %}Planning {% endblock %}
 
-{% block breadcrumbs %}
-<a href="{{ path('homepage') }}"><i class="material-icons">home</i></a><i class="material-icons">chevron_right</i>
-<i class="material-icons">list</i>&nbsp;Planning
+{% block breadcrumps %}
+    <a href="{{ path('homepage') }}"><i class="material-icons">home</i></a> <i class="material-icons">chevron_right</i>
+    <i class="material-icons">list</i>planning
 {% endblock %}
 
 {% block content %}
     <h4>Planning</h4>
+    {# {% include "booking/_partial/list.html.twig" with { bucketsByDay: bucketsByDay } %} #}
 
-    {% include "booking/_partial/list.html.twig" with { bucketsByDay: bucketsByDay } %}
+    {# modifié a partir d'ici #}
+
+    </div> <!-- end div.section -->
+    </div> <!-- end div.container -->
+    <div style="padding: 5px;">
+        <ul class="collapsible" data-collapsible="expandable">
+            {% set current_cycle = 0 %}
+            {% if beneficiary is not defined %}
+                {% set beneficiary = null %}
+            {% endif %}
+            {% for bucketsByjob in bucketsByDay %}
+                <li>
+                    <div class="collapsible-header {% if (not beneficiary or shift_service.canBookOnCycle(beneficiary,current_cycle)) %}active {% else %}not-allowed {% endif %}">
+                        <i class="material-icons">{% if (not beneficiary or shift_service.canBookOnCycle(beneficiary,current_cycle)) %}event_available{% else %}event_busy{% endif %}</i>{{ (bucketsByjob|first|first).start|date_fr_long }}
+                    </div>
+                    <div class="collapsible-body" style="padding: 1rem 0">
+                        {% for buckets in bucketsByjob %}
+                            <div class="row" style="display: flex;min-height: 40px;">
+                                <div class="col s12">
+                                    <div style="position: relative">
+                                        {% set lignes = {} %}
+                                        {% for bucket in buckets %}
+                                            {# compute lines #}
+                                            {% set l = 0 %}
+                                            {% set break = false %}
+                                            {% for i in 0..100 if not break %}
+                                                {% if lignes[i~'_'] is not defined %}
+                                                    {% set l = i %}
+                                                    {% set lignes = lignes|merge({(i~'_'): bucket.end}) %}
+                                                    {% set break = true %}
+                                                {% else %}
+                                                    {% if lignes[i~'_'] < bucket.start %}
+                                                        {% set l = i %}
+                                                        {% set lignes = lignes|merge({(i~'_'): bucket.end}) %}
+                                                        {% set break = true %}
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            {# / compute lines #}
+                                            {# {% include "booking/_partial/shift.html.twig" with { beneficiary: beneficiary, user: app.user, bucket: bucket, start: hours|first, end: hours|last, line:l  } %} #}
+                                            {% include "booking/_partial/shift_with_names.html.twig" with { beneficiary: beneficiary, user: app.user, bucket: bucket, start: hours|first, end: hours|last, line:l  } %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </li>
+{#            {% if beneficiary and (( beneficiary.membership.endOfCycle(current_cycle) | date('Y-m-d') ) == (((bucketsByjob|first|first).start) | date('Y-m-d') )) %}#}
+{#                {% set current_cycle = current_cycle + 1 %}#}
+{#                </ul>#}
+{#                <ul class="collapsible" data-collapsible="expandable">#}
+{#            {% endif %}#}
+            {% endfor %}
+            </ul>
+    </div>
+    <div class="container">
+    <div class="section">
 {% endblock %}

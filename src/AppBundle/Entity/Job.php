@@ -41,21 +41,42 @@ class Job
 
     /**
      * @var string
-     * 
+     *
      * @ORM\Column(name="description", type="text", nullable=true)
      */
     private $description;
 
     /**
      * @var string
-     * 
+     *
      * @ORM\Column(name="url", type="string", length=255, nullable=true)
      */
     private $url;
 
     /**
      * @var int
-     * 
+     *
+     * @ORM\Column(name="min_shifter_alert", type="integer", options={"default" : 2})
+     */
+    private $min_shifter_alert;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="description", type="text", nullable=true)
+     */
+    private $description;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="url", type="string", length=255, nullable=true)
+     */
+    private $url;
+
+    /**
+     * @var int
+     *
      * @ORM\Column(name="min_shifter_alert", type="integer", options={"default" : 2})
      */
     private $min_shifter_alert;
@@ -178,7 +199,7 @@ class Job
 
     /**
      * Set min_shifter_alert
-     * 
+     *
      * @param int $min_shifter_alert
      * @return Job
      */
@@ -278,7 +299,7 @@ class Job
 
     /**
      * Get description
-     * 
+     *
      * @return string
      */
     public function getDescription(): string
@@ -288,7 +309,7 @@ class Job
 
     /**
      * Set description
-     * 
+     *
      * @param string $description
      * @return Job
      */

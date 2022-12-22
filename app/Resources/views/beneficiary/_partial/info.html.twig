@@ -29,17 +29,17 @@
             <i class="material-icons tiny">mail</i>
             <span>{{ beneficiary.email }}</span>
         </div>
-        {% if beneficiary.address %}
-            <div class="col s12 truncate">
-                <i class="material-icons tiny">location_on</i>
-                {{ beneficiary.address.street1 }}
-                {% if beneficiary.address.street2 %}
-                    {{ beneficiary.address.street2 }}
-                {% endif %}
-                {{ "%05d"|format(beneficiary.address.zipCode) }}
-                {{ beneficiary.address.city }}
-            </div>
-        {% endif %}
+{#        {% if beneficiary.address %}#}
+{#            <div class="col s12 truncate">#}
+{#                <i class="material-icons tiny">location_on</i>#}
+{#                {{ beneficiary.address.street1 }}#}
+{#                {% if beneficiary.address.street2 %}#}
+{#                    {{ beneficiary.address.street2 }}#}
+{#                {% endif %}#}
+{#                {{ "%05d"|format(beneficiary.address.zipCode) }}#}
+{#                {{ beneficiary.address.city }}#}
+{#            </div>#}
+{#        {% endif %}#}
     {% endif %}
     <div class="col s12 truncate">
         <i class="material-icons tiny">person</i>&nbsp;{{ beneficiary.user.username }}

@@ -751,6 +751,9 @@ class MembershipController extends Controller
             }
         } else {
             $registration->setDate(new DateTime('now'));
+            // ajout MattB
+            $registration->setAmount("100");
+            $registration->setMode(2);
             $registration->setRegistrar($this->getUser());
         }
         $registration->setMembership($member);

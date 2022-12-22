@@ -17,8 +17,8 @@
                         data-ticks-angle="180"
                         data-value-box="false"
                         data-value="{{ member.timeCount / 60 }}"
-                        data-max-value="{{ ((member.beneficiaries | length) * due_duration_by_cycle) / 60 }}"
-                        data-major-ticks="{{ due_duration_hour * -3 }}h,{{ due_duration_hour * -2 }}h,{{ due_duration_hour * -1}}h,0,{{ due_duration_hour }}h{% if (member.beneficiaries | length) > 1 %},{{ due_duration_hour *2 }}h{% endif %}"
+                        data-max-value="{{ due_duration_hour * 3 }}"
+                        data-major-ticks="{{ due_duration_hour * -3 }}h,{{ due_duration_hour * -2 }}h,{{ due_duration_hour * -1}}h,0h,{{ due_duration_hour }}h,{{ due_duration_hour * 2 }}h,{{ due_duration_hour * 3 }}h"
                         data-minor-ticks="2"
                         data-stroke-ticks="true"
                         data-highlights='[
@@ -94,12 +94,9 @@
         {% endif %}
     {% endif %}
 
-    <a href="{{ path("booking") }}" class="btn teal hide-on-small-only" title="Je réserve un créneau{% if use_fly_and_fixed %} volant{% endif %}" {% if beneficiariesWhoCanBook | length == 0 %}disabled{% endif %}>
+    <a href="{{ path("booking") }}" class="btn teal hide-on-small-only" title="Je réserve un créneau" {% if beneficiariesWhoCanBook | length == 0 %}disabled{% endif %}>
         <i class="material-icons left">schedule</i>
-        Réserver un créneau{% if use_fly_and_fixed %} volant{% endif %}
-    </a>
-    <a href="{{ path("booking") }}" class="btn teal hide-on-med-and-up" title="Je réserve un créneau{% if use_fly_and_fixed %} volant{% endif %}" {% if beneficiariesWhoCanBook | length == 0 %}disabled{% endif %}>
-        Réserver
+        Je réserve un créneau
     </a>
 
     <p>{% if member.beneficiaries | length > 1 %}Votre{% else %}Mon{% endif %} cycle actuel se termine le {{ end_current_cycle | date_fr_long }}</p>

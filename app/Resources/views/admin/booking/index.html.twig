@@ -1,16 +1,16 @@
 {% extends 'layout.html.twig' %}
 
-{% block title %}Administration des créneaux - {{ site_name }}{% endblock %}
+{% block title %}Liste des créneaux - {{ site_name }}{% endblock %}
 
 {% block breadcrumbs %}
 <a href="{{ path('homepage') }}"><i class="material-icons">home</i></a><i class="material-icons">chevron_right</i>
 <a href="{{ path('admin') }}"><i class="material-icons">build</i>&nbsp;Administration</a><i class="material-icons">chevron_right</i>
-<i class="material-icons">date_range</i>&nbsp;Administration des créneaux
+<i class="material-icons">date_range</i>&nbsp;Liste des créneaux
 {% endblock %}
 
 {% block content %}
 <div class="row center">
-    <h4 class="header">Administration des créneaux</h4>
+    <h4 class="header">Liste des créneaux</h4>
 </div>
 
 {# Filter form  --------- #}
@@ -114,10 +114,11 @@
             }
             M.toast({ text: msg, displayLength: 5000, classes: 'red' });
         }
+
         $(document).ready(function ($) {
             // for the filter form ------------------
             $('#SelectionTypeDropBox').on('change', function () {
-                if (this.value === "0") {
+                if (this.value === "week") {
                     $('#weekSelectionType').show();
                     $('#dateSelectionType').hide();
                 } else {
@@ -126,16 +127,19 @@
                 }
             })
             .trigger('change');
+
+            // for the bucket modals ------------------
             $('#modal-bucket').modal({
                 onCloseEnd: function() {
                     $('#modal-bucket-content').html('');
                 },
                 onOpenStart: function(modal, trigger) {
+                    console.log("onOpenStart");
                     var url = $(trigger).attr('data-source');
                     $.get(url, function( data ) {
                         $('#modal-bucket-content').html(data);
                         $('#modal-bucket-content .collapsible').collapsible();
-                        $('#modal-bucket-content select').formSelect();
+                        $('#modal-bucket-content select').formSelect({ dropdownOptions: { container: document.body } });
                     }).fail(ajaxError);
                 }
             });

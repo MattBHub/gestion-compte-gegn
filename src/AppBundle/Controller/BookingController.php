@@ -27,8 +27,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 
 /**
@@ -83,14 +82,12 @@ class BookingController extends Controller
         ));
     }
 
-
     /**
-     * @Route("/", name="booking")
+     * @Route("/", name="booking", methods={"GET","POST"})
      * @Security("is_granted('IS_AUTHENTICATED_REMEMBERED', user)")
-     * @Method({"GET","POST"})
      * @param Request $request
      * @return RedirectResponse|Response
-     * @throws \Exception
+     * @throws Exception
      */
     public function indexAction(Request $request)
     {
@@ -106,7 +103,7 @@ class BookingController extends Controller
                 return $this->redirectToRoute('homepage');
             }
             if ($this->getUser()->getBeneficiary()->getMembership()->getFrozen()){
-                $session->getFlashBag()->add('warning', 'Oups, ton compte est gelé ❄️ ! Dégel pour réserver 😉');
+                $session->getFlashBag()->add('warning', 'Oups, ton compte est gelé ❄️ !<br />Dégel pour réserver 😉');
                 return $this->redirectToRoute('homepage');
             }
         }
@@ -178,19 +175,18 @@ class BookingController extends Controller
      *      "form":FormBuilderInterface
      *      "from" => DateTime,
      *      "to" => DateTime,
-     *      "job"=> Job|null,
-     *      "filling"=>str|null,
+     *      "job" => Job|null,
+     *      "filling" => str|null,
      *      )
      */
     private function adminFilterFormFactory($em, Request $request): array
     {
-        // filter creation ----------------------
+        // default values
         $defaultFrom = new DateTime();
         $defaultFrom->setTimestamp(strtotime('last monday', strtotime('tomorrow')));
-
+        $defaultTo = null;
         $defaultWeek = (new DateTime())->format('W');
         $defaultYear = (new DateTime())->format('Y');
-
         $years = $em->getRepository(Shift::class)->getYears();
 
         $filterForm = $this->createFormBuilder()
@@ -200,29 +196,29 @@ class BookingController extends Controller
                 'required' => true,
                 'data' => "Date",
                 'choices' => array(
-                    'Date' => true,
-                    'Semaine' => false,
+                    'Date' => "date",
+                    'Semaine' => "week",
                 ),
             ))
-            ->add('from', TextType::class, [
+            ->add('from', TextType::class, array(
                 'label' => 'A partir de',
                 'required' => true,
                 'data' => $defaultFrom->format('Y-m-d'),
                 'attr' => array('class' => 'datepicker'),
-            ])
-            ->add('to', TextType::class, [
+            ))
+            ->add('to', TextType::class, array(
                 'label' => 'Jusqu\'à',
                 'required' => false,
                 'attr' => array('class' => 'datepicker'),
-            ])
-            ->add('year', ChoiceType::class, [
+            ))
+            ->add('year', ChoiceType::class, array(
                 'required' => false,
                 'choices' => array_combine($years, $years),
                 'label' => 'Année',
                 'data' =>  $defaultYear,
                 'placeholder' => false,
-            ])
-            ->add('week', IntegerType::class, [
+            ))
+            ->add('week', IntegerType::class, array(
                 'required' => false,
                 'label' => 'Numéro de semaine',
                 'scale' => 0,
@@ -231,7 +227,7 @@ class BookingController extends Controller
                     'min' => 1,
                     'max' => 52,
                 ],
-            ])
+            ))
             ->add('job', EntityType::class, array(
                 'label' => 'Type de créneau',
                 'class' => 'AppBundle:Job',
@@ -247,49 +243,45 @@ class BookingController extends Controller
                 }
             ))
             ->add('filling', ChoiceType::class, array(
-                    'label' => 'Remplissage',
-                    'required' => false,
-                    'choices' => array(
-                        'Complet' => 'full',
-                        'Partiel' => 'partial',
-                        'Vide' => 'empty',
-                    ),
+                'label' => 'Remplissage',
+                'required' => false,
+                'choices' => array(
+                    'Complet' => 'full',
+                    'Partiel' => 'partial',
+                    'Vide' => 'empty',
+                ),
             ))
-            ->add(
-                'filter',
-                SubmitType::class,
-                array('label' => 'Filtrer', 'attr' => array('class' => 'btn', 'value' => 'filtrer'))
-            )
+            ->add('filter', SubmitType::class, array(
+                'label' => 'Filtrer',
+                'attr' => array('class' => 'btn', 'value' => 'filtrer')
+            ))
             ->getForm();
 
         $filterForm->handleRequest($request);
         $from = $defaultFrom;
-        $to = null;
+        $to = $defaultTo;
         $job = null;
-        $filling=null;
+        $filling = null;
 
         try {
             if ($filterForm->isSubmitted() && $filterForm->isValid()) {
                 $job = $filterForm->get("job")->getData();
                 $filling = $filterForm->get("filling")->getData();
 
-                if ($filterForm->get("type")->getData()) {
-                    // selection mode based on dates
-
+                // selection mode based on dates
+                if ($filterForm->get("type")->getData() == "date") {
                     $from = new DateTime($filterForm->get('from')->getData());
                     $to = $filterForm->get('to')->getData();
                     if ($to) {
                         $to = new DateTime($to);
                     }
-
+                // selection mode based on week number
                 } else {
-                    // selection mode based on week number
-
                     $week = $filterForm->get("week")->getData();
                     $year = $filterForm->get("year")->getData();
-
                     $from = new DateTime();
                     $from->setISODate($year, $week, 1);
+                    $from->setTime(0,0);
                     $to = clone $from;
                     $to->modify('+6 days');
                 }
@@ -300,19 +292,19 @@ class BookingController extends Controller
             $job = null;
         }
 
-
         return array(
             "form" => $filterForm,
             "from" => $from,
             "to" => $to,
-            "job"=> $job,
-            "filling"=>$filling,
+            "job" => $job,
+            "filling" => $filling,
         );
     }
 
     /**
      * build the bucket (regrouping all the shift at the same time with the same job)
      * // TODO Maybe it should be in the BucketRepository...
+     *
      * @param array $shifts
      * @param string|null $filling
      * @return array
@@ -368,9 +360,9 @@ class BookingController extends Controller
 
     /**
      * main administration page for booking shift
-     * @Route("/admin", name="booking_admin")
+     *
+     * @Route("/admin", name="booking_admin", methods={"GET","POST"})
      * @Security("has_role('ROLE_SHIFT_MANAGER')")
-     * @Method({"GET","POST"})
      */
     public function adminAction(Request $request): Response
     {
@@ -394,9 +386,8 @@ class BookingController extends Controller
     }
 
     /**
-     * @Route("/bucket/{id}/show", name="bucket_show")
+     * @Route("/bucket/{id}/show", name="bucket_show", methods={"GET"})
      * @Security("has_role('ROLE_SHIFT_MANAGER')")
-     * @Method({"GET"})
      */
     public function showBucketAction(Request $request, Shift $bucket)
     {
@@ -437,9 +428,11 @@ class BookingController extends Controller
     }
 
     /**
+     * When the user click on the 'edit' button on the bucket popup.
+     *
+     * @Route("/bucket/{id}/edit", name="bucket_edit", methods={"GET", "POST"})
      * @Route("/bucket/{id}/edit", name="bucket_edit")
      * @Security("has_role('ROLE_SHIFT_MANAGER')")
-     * @Method({"GET", "POST"})
      */
     public function editBucketAction(Request $request,Shift $shift)
     {
@@ -476,10 +469,10 @@ class BookingController extends Controller
     }
 
     /**
-     * lock a bucket
+     * lock a bucket, used when the user click on the 'verouiller' button
+     * on the bucket popup.
      *
-     * @Route("/bucket/{id}/lock", name="bucket_lock_unlock")
-     * @Method("POST")
+     * @Route("/bucket/{id}/lock", name="bucket_lock_unlock", methods={"POST"})
      */
     public function lockUnlockBucketAction(Request $request, Shift $shift)
     {
@@ -532,11 +525,11 @@ class BookingController extends Controller
     }
 
     /**
-     * delete all shifts in bucket.
+     * delete all shifts in bucket, used when the user click on the 'supprimer'
+     * button on the bucket popup.
      *
-     * @Route("/bucket/{id}", name="bucket_delete")
+     * @Route("/bucket/{id}", name="bucket_delete", methods={"DELETE"})
      * @Security("has_role('ROLE_SHIFT_MANAGER')")
-     * @Method("DELETE")
      */
     public function deleteBucketAction(Request $request, Shift $bucket)
     {

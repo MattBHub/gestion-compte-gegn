@@ -5,7 +5,6 @@ namespace AppBundle\Controller;
 use AppBundle\Command\ImportUsersCommand;
 use AppBundle\Entity\AbstractRegistration;
 use AppBundle\Entity\Address;
-use AppBundle\Entity\AnonymousBeneficiary;
 use AppBundle\Entity\Beneficiary;
 use AppBundle\Entity\Commission;
 use AppBundle\Entity\HelloassoPayment;
@@ -28,6 +27,7 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
@@ -40,8 +40,7 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Http\Event\InteractiveLoginEvent;
 use Symfony\Component\Validator\Constraints\Email as EmailConstraint;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
 use DateTime;
 use Symfony\Component\Validator\Constraints\NotBlank;
@@ -58,8 +57,7 @@ class AdminController extends Controller
     /**
      * Admin panel
      *
-     * @Route("/", name="admin")
-     * @Method("GET")
+     * @Route("/", name="admin", methods={"GET"})
      * @Security("has_role('ROLE_ADMIN_PANEL')")
      */
     public function indexAction()
@@ -70,43 +68,37 @@ class AdminController extends Controller
     /**
      * Lists all user entities.
      *
-     * @param Request $request , SearchUserFormHelper $formHelper
+     * @param Request $request, SearchUserFormHelper $formHelper
      * @return Response
-     * @Route("/users", name="user_index")
-     * @Method({"GET","POST"})
+     * @Route("/users", name="user_index", methods={"GET","POST"})
      * @Security("has_role('ROLE_USER_MANAGER')")
      */
     public function usersAction(Request $request, SearchUserFormHelper $formHelper)
     {
-        $form = $formHelper->getSearchForm($this->createFormBuilder(), $request->getQueryString());
+        $defaults = [
+            'sort' => 'o.member_number',
+            'dir' => 'ASC',
+            'withdrawn' => 1,
+        ];
+        $form = $formHelper->createMemberFilterForm($this->createFormBuilder(), $defaults);
         $form->handleRequest($request);
 
         $action = $form->get('action')->getData();
 
         $qb = $formHelper->initSearchQuery($this->getDoctrine()->getManager());
 
-        $page = 1;
-        $order = 'ASC';
-        $sort = 'o.member_number';
-        $limit = 25;
-
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('page')->getData() > 0) {
-                $page = $form->get('page')->getData();
-            }
-            if ($form->get('sort')->getData()) {
-                $sort = $form->get('sort')->getData();
-            }
-            if ($form->get('dir')->getData()) {
-                $order = $form->get('dir')->getData();
-            }
             $formHelper->processSearchFormData($form, $qb);
+            $sort = $form->get('sort')->getData();
+            $order = $form->get('dir')->getData();
+            $currentPage = $form->get('page')->getData();
         } else {
-            $form->get('sort')->setData($sort);
-            $form->get('dir')->setData($order);
+            $sort = $defaults['sort'];
+            $order = $defaults['dir'];
+            $currentPage = 1;
+            $qb = $qb->andWhere('o.withdrawn = :withdrawn')
+                    ->setParameter('withdrawn', $defaults['withdrawn']-1);
         }
-        $formHelper->processSearchQueryData($request->getQueryString(), $qb);
-
         $qb = $qb->orderBy($sort, $order);
 
         // Export CSV
@@ -136,19 +128,24 @@ class AdminController extends Controller
                 'request' => $request
             ], 307);
         } else {
-            $qb = $qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit);
-            $members = new Paginator($qb->getQuery());
-            $max = sizeof($members);
-            $nb_of_pages = intval($max / $limit);
-            $nb_of_pages += (($max % $limit) > 0) ? 1 : 0;
+            $limitPerPage = 25;
+            $paginator = new Paginator($qb);
+            $totalItems = count($paginator);
+            $pagesCount = ($totalItems == 0) ? 1 : ceil($totalItems / $limitPerPage);
+            $currentPage = ($currentPage > $pagesCount) ? $pagesCount : $currentPage;
+
+            $paginator
+                ->getQuery()
+                ->setFirstResult($limitPerPage * ($currentPage-1)) // set the offset
+                ->setMaxResults($limitPerPage); // set the limit
         }
 
         return $this->render('admin/user/list.html.twig', array(
-            'members' => $members,
+            'members' => $paginator,
             'form' => $form->createView(),
-            'nb_of_result' => $max,
-            'page' => $page,
-            'nb_of_pages' => $nb_of_pages
+            'nb_of_result' => $totalItems,
+            'page' => $currentPage,
+            'nb_of_pages' => $pagesCount
         ));
     }
 
@@ -158,8 +155,7 @@ class AdminController extends Controller
      * @param Request $request , SearchUserFormHelper $formHelper
      * @param SearchUserFormHelper $formHelper
      * @return Response
-     * @Route("/admin_users", name="admins_list")
-     * @Method({"GET","POST"})
+     * @Route("/admin_users", name="admins_list", methods={"GET","POST"})
      * @Security("has_role('ROLE_ADMIN')")
      */
     public function adminUsersAction(Request $request, SearchUserFormHelper $formHelper)
@@ -186,8 +182,7 @@ class AdminController extends Controller
      *
      * @param Request $request
      * @return Response
-     * @Route("/roles", name="roles_list")
-     * @Method({"GET"})
+     * @Route("/roles", name="roles_list", methods={"GET"})
      * @Security("has_role('ROLE_ADMIN')")
      */
     public function rolesListAction(Request $request)
@@ -218,8 +213,7 @@ class AdminController extends Controller
     /**
      * Widget generator
      *
-     * @Route("/widget", name="widget_generator")
-     * @Method({"GET","POST"})
+     * @Route("/widget", name="widget_generator", methods={"GET","POST"})
      * @Security("has_role('ROLE_PROCESS_MANAGER')")
      */
     public function widgetBuilderAction(Request $request){
@@ -253,8 +247,7 @@ class AdminController extends Controller
     /**
      * Import from CSV
      *
-     * @Route("/importcsv", name="user_import_csv")
-     * @Method({"GET","POST"})
+     * @Route("/importcsv", name="user_import_csv", methods={"GET","POST"})
      * @Security("has_role('ROLE_SUPER_ADMIN')")
      */
     public function csvImportAction(Request $request, KernelInterface $kernel)

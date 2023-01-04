@@ -7,8 +7,7 @@ use AppBundle\Entity\Code;
 use AppBundle\Event\CodeNewEvent;
 use AppBundle\Security\CodeVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -40,8 +39,7 @@ class CodeController extends Controller
     /**
      * Lists all codes.
      *
-     * @Route("/", name="codes_list")
-     * @Method("GET")
+     * @Route("/", name="codes_list", methods={"GET"})
      * @Security("has_role('ROLE_USER')")
      */
     public function listAction(Request $request){
@@ -78,8 +76,7 @@ class CodeController extends Controller
     /**
      * add new code.
      *
-     * @Route("/new", name="code_edit")
-     * @Method({"GET","POST"})
+     * @Route("/new", name="code_edit", methods={"GET","POST"})
      * @Security("has_role('ROLE_USER')")
      */
     public function newAction(Request $request)
@@ -135,8 +132,7 @@ class CodeController extends Controller
     /**
      * add new code.
      *
-     * @Route("/generate", name="code_generate")
-     * @Method({"GET","POST"})
+     * @Route("/generate", name="code_generate", methods={"GET","POST"})
      * @Security("has_role('ROLE_USER')")
      */
     public function generateAction(Request $request){
@@ -211,8 +207,7 @@ class CodeController extends Controller
 
     /**
      *
-     * @Route("/toggle/{id}", name="code_toggle")
-     * @Method({"GET"})
+     * @Route("/toggle/{id}", name="code_toggle",methods={"GET","POST"})
      * @Security("has_role('ROLE_USER')")
      */
     public function toggleAction(Request $request,Code $code){
@@ -238,8 +233,7 @@ class CodeController extends Controller
     /**
      * close all codes.
      *
-     * @Route("/close_all", name="code_change_done")
-     * @Method("GET")
+     * @Route("/close_all", name="code_change_done", methods={"GET"})
      */
     public function closeAllButMineAction(Request $request){
         $session = new Session();
@@ -298,8 +292,7 @@ class CodeController extends Controller
     /**
      * code delete
      *
-     * @Route("/{id}", name="code_delete")
-     * @Method({"DELETE"})
+     * @Route("/{id}", name="code_delete", methods={"DELETE"})
      */
     public function removeAction(Request $request,Code $code)
     {

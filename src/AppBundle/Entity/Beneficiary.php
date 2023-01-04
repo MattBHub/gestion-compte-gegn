@@ -180,6 +180,30 @@ class Beneficiary
     }
 
     /**
+     * Get firstname
+     *
+     * @return string
+     */
+    public function getFirstname()
+    {
+        return ucfirst(strtolower($this->firstname));
+    }
+
+    /**
+     * Set firstname
+     *
+     * @param string $firstname
+     *
+     * @return Beneficiary
+     */
+    public function setFirstname($firstname)
+    {
+        $this->firstname = $firstname;
+
+        return $this;
+    }
+
+    /**
      * Set lastname
      *
      * @param string $lastname
@@ -203,20 +227,6 @@ class Beneficiary
         return strtoupper($this->lastname);
     }
 
-    /**
-     * Set firstname
-     *
-     * @param string $firstname
-     *
-     * @return Beneficiary
-     */
-    public function setFirstname($firstname)
-    {
-        $this->firstname = $firstname;
-
-        return $this;
-    }
-
     public function getDisplayName(): string
     {
         return $this->getFirstname() . ' ' . $this->getLastname();
@@ -232,7 +242,7 @@ class Beneficiary
      */
     public function getDisplayNameWithMemberNumber(): string
     {
-        return '#' . $this->getMemberNumber() . ' ' . $this->getFirstname() . ' ' . $this->getLastname();
+        return '#' . $this->getMemberNumber() . ' ' . $this->getDisplayName();
     }
 
     public function getDisplayNameWithMemberNumberAndStatusIcon(): string
@@ -251,16 +261,6 @@ class Beneficiary
     public function getPublicDisplayNameWithMemberNumber(): string
     {
         return '#' . $this->getMemberNumber() . ' ' . $this->getPublicDisplayName();
-    }
-
-    /**
-     * Get firstname
-     *
-     * @return string
-     */
-    public function getFirstname()
-    {
-        return ucfirst(strtolower($this->firstname));
     }
 
     /**
@@ -509,50 +509,6 @@ class Beneficiary
     public function getTasks()
     {
         return $this->tasks;
-    }
-
-    /**
-     * Add givenProxy
-     *
-     * @param \AppBundle\Entity\Proxy $givenProxy
-     *
-     * @return Beneficiary
-     */
-    public function addGivenProxy(\AppBundle\Entity\Proxy $givenProxy)
-    {
-        $this->given_proxys[] = $givenProxy;
-
-        return $this;
-    }
-
-    /**
-     * Remove givenProxy
-     *
-     * @param \AppBundle\Entity\Proxy $givenProxy
-     */
-    public function removeGivenProxy(\AppBundle\Entity\Proxy $givenProxy)
-    {
-        $this->given_proxys->removeElement($givenProxy);
-    }
-
-    /**
-     * Get givenProxys
-     *
-     * @return \Doctrine\Common\Collections\Collection
-     */
-    public function getGivenProxys()
-    {
-        return $this->given_proxys;
-    }
-
-    /**
-     * Get givenProxies
-     *
-     * @return \Doctrine\Common\Collections\Collection
-     */
-    public function getGivenProxies()
-    {
-        return $this->given_proxies;
     }
 
     /**

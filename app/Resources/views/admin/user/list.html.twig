@@ -123,7 +123,7 @@
                                 {{ form_label(form.compteurgt) }}
                             </div>
                             <div class="col s6 center">
-                                < &nbsp; compteur &nbsp; <
+                                <span><</span>&nbsp;&nbsp;compteur&nbsp;&nbsp;<span><</span>
                             </div>
                             <div class="input-field col s3">
                                 {{ form_widget(form.compteurlt) }}
@@ -133,11 +133,9 @@
                     </div>
                     <div class="col s12 m4">
                         <h5>Bénéficiaire(s)</h5>
-                        <div>
-                            <div class="input-field">
-                                {{ form_widget(form.username) }}
-                                {{ form_label(form.username) }}
-                            </div>
+                        <div class="input-field">
+                            {{ form_widget(form.username) }}
+                            {{ form_label(form.username) }}
                         </div>
                         <div class="input-field">
                             {{ form_widget(form.firstname) }}
@@ -162,40 +160,35 @@
                         </div>
                     </div>
                     <div class="col s12 m4">
-                        <div>
-                            <h5>Formations / Commissions</h5>
-                            <div class="row">
-                                <div class="input-field col s6">
-                                    {{ form_widget(form.formations) }}
-                                    {{ form_label(form.formations) }}
-                                </div>
-                                <div class="col s6 input-field">
-                                    {{ form_widget(form.or_and_exp_formations) }}
-                                    {{ form_label(form.or_and_exp_formations) }}
-                                </div>
+                        <h5>Formations / Commissions</h5>
+                        <div class="row">
+                            <div class="input-field col s6">
+                                {{ form_widget(form.formations) }}
+                                {{ form_label(form.formations) }}
                             </div>
-                            <div class="input-field">
-                                {{ form_widget(form.commissions) }}
-                                {{ form_label(form.commissions) }}
+                            <div class="col s6 input-field">
+                                {{ form_widget(form.or_and_exp_formations) }}
+                                {{ form_label(form.or_and_exp_formations) }}
                             </div>
                         </div>
-                        <div>
-                            <h5>!Formations / !Commissions</h5>
-                            <div class="input-field">
-                                {{ form_widget(form.not_formations) }}
-                                {{ form_label(form.not_formations) }}
-                            </div>
-                            <div class="input-field">
-                                {{ form_widget(form.not_commissions) }}
-                                {{ form_label(form.not_commissions) }}
-                            </div>
+                        <div class="input-field">
+                            {{ form_widget(form.commissions) }}
+                            {{ form_label(form.commissions) }}
                         </div>
-                        <div>
-                            <h5>Actions</h5>
-                            {{ form_widget(form.submit) }}
-                            {{ form_widget(form.csv) }}
-                            {{ form_widget(form.mail) }}
+                        <h5>!Formations / !Commissions</h5>
+                        <div class="input-field">
+                            {{ form_widget(form.not_formations) }}
+                            {{ form_label(form.not_formations) }}
                         </div>
+                        <div class="input-field">
+                            {{ form_widget(form.not_commissions) }}
+                            {{ form_label(form.not_commissions) }}
+                        </div>
+                        <br />
+                        <h5>Actions</h5>
+                        {{ form_widget(form.submit) }}
+                        {{ form_widget(form.csv) }}
+                        {{ form_widget(form.mail) }}
                     </div>
                 </div>
 
@@ -213,8 +206,8 @@
                 <th data-col="u.username">username</th>
                 <th data-col="b.firstname">prénom</th>
                 <th data-col="b.lastname">nom</th>
-                <th data-col="b.email">email</th>
-                <th class="hide-on-small-and-down" data-col="r.date">Adhésion(s)</th>
+                <th data-col="u.email">email</th>
+                <th data-col="r.date" class="hide-on-small-and-down">Adhésion(s)</th>
                 <th class="hide-on-med-and-down">Formation(s)</th>
                 <th class="hide-on-med-and-down">Commission(s)</th>
             </tr>
@@ -222,7 +215,7 @@
         <tbody>
         {% for member in members %}
             {% if member.mainBeneficiary %}
-                <tr class="{% if member.withdrawn %}withdrawn{% elseif member.frozen %}frozen{% endif %}" data-url="{{ path('member_show', { 'member_number': member.memberNumber }) }}" >
+                <tr data-url="{{ path('member_show', { 'member_number': member.memberNumber }) }}" class="{% if member.withdrawn %}withdrawn{% elseif member.frozen %}frozen{% elseif member.isExemptedFromShifts() %}exempted{% endif %}">
                     <td class="hide-on-med-and-down">
                         {% if member.withdrawn %}
                             <i class="material-icons" title="Compte fermé">block</i>
@@ -293,8 +286,8 @@
                     </td>
                 </tr>
             {% else %}
-                <tr class="{% if member.withdrawn %}withdrawn{% endif %} {% if member.frozen %}frozen{% endif %}" data-url="{{ path('member_show', { 'member_number': member.memberNumber }) }}" >
-                    <td colspan="9">{{ member.mainBeneficiary.user }}</td>
+                <tr data-url="{{ path('member_show', { 'member_number': member.memberNumber }) }}" class="{% if member.withdrawn %}withdrawn{% endif %} {% if member.frozen %}frozen{% endif %}">
+                    <td colspan="9">{{ member }}</td>
                 </tr>
             {% endif %}
         {% endfor %}
@@ -311,37 +304,37 @@
         </li>
         {% if nb_of_pages < 10 %}
             {% for i in range(1,nb_of_pages) %}
-                <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
             {% endfor %}
         {% else %}
             {% if page <= 3 %}
                 {% for i in range(1,page+1) %}
-                    <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                    <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
                 {% endfor %}
                 <li>...</li>
                 {% for i in range(nb_of_pages-1,nb_of_pages) %}
-                    <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                    <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
                 {% endfor %}
             {% else %}
                 {% if nb_of_pages - page <= 3 %}
                     {% for i in range(1,2) %}
-                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
                     {% endfor %}
                     <li>...</li>
                     {% for i in range(page-1,nb_of_pages) %}
-                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
                     {% endfor %}
                 {% else %}
                     {% for i in range(1,2) %}
-                    <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                    <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
                     {% endfor %}
                     <li>...</li>
                     {% for i in range(page-1,page+1) %}
-                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
                     {% endfor %}
                     <li>...</li>
                     {% for i in range(nb_of_pages-1,nb_of_pages) %}
-                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="{{ path("user_index",{'page':i}) }}" data-page="{{ i }}">{{ i }}</a></li>
+                        <li class="{% if(page==i) %}active{% else %}waves-effect{% endif %}"><a href="#" data-page="{{ i }}">{{ i }}</a></li>
                     {% endfor %}
                 {% endif %}
             {% endif %}
@@ -357,26 +350,22 @@
 
 {% block stylesheets %}
     <style>
-        td strong{
-            /*font-weight: 600;*/
+        th.active {
+            color: {{ main_color }};
         }
-        th.active{
-            color: #51CAE9;
+        th[data-col] {
+            cursor: pointer;
         }
-        tr.withdrawn{
-            background: rgba(255, 50, 0, 0.2);
-        }
-        tr.frozen{
-            background-color: rgba(0, 138, 255, 0.1);
+        tr.frozen {
             background-image: url({% image '@AppBundle/Resources/public/img/snowflakes.svg' %}{{ asset_url }}{% endimage %});
             background-position: top right;
             background-repeat: no-repeat;
             background-size: contain;
         }
-        tr.frozen td{
+        tr.frozen td {
             background-color: rgba(255, 255, 255, 0.5);
         }
-        tbody tr{
+        tbody tr {
             cursor: pointer;
         }
     </style>
@@ -398,12 +387,9 @@
             });
             $('.pagination li:not(.disabled) a').click(function(e){
                 e.preventDefault();
-                $('#form_page').val($(this).attr('data-page'));
+                $('#form_page').val($(this).data('page'));
                 $('form[name=form]').submit();
             });
-            // $('select').on('change', function() {
-            //     $('form[name=form]').submit();
-            // });
             $('th[data-col]').click(function(e){
                 e.preventDefault();
                 if ($('#form_sort').val() === $(this).attr('data-col')){

@@ -37,6 +37,7 @@ services:
     AppBundle\Controller\AmbassadorController:
         arguments:
             - "%time_after_which_members_are_late_with_shifts%"
+            - "%registration_every_civil_year%"
     AppBundle\Controller\BookingController:
         arguments:
             - "%use_fly_and_fixed%"
@@ -181,6 +182,9 @@ services:
             arguments:
                 - "@doctrine.orm.entity_manager"
                 - '@membership_service'
+    search_user_form_helper:
+            class: AppBundle\Service\SearchUserFormHelper
+            public: true
 
     logger.user_processor:
             class: AppBundle\Monolog\MonologUserProcessor

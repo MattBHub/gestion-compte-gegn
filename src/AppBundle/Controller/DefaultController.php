@@ -22,7 +22,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -31,7 +31,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 
@@ -76,25 +75,22 @@ class DefaultController extends Controller
                 $cycle_end = $this->get('membership_service')->getEndOfCycle($membership);
                 $dayAfterEndOfCycle = clone $cycle_end;
                 $dayAfterEndOfCycle->modify('+1 day');
+                $profileUrlHtml = "<a style=\"text-decoration:underline;color:white;\" href=\"" . $this->get('router')->generate('fos_user_profile_show') . "\"><i class=\"material-icons tiny\">settings</i> ton profil</a>.";
                 if ($membership->getFrozenChange() && !$membership->getFrozen()) {
                     $now = new \DateTime('now');
                     $session->getFlashBag()->add('warning',
                         'Comme demandé, ton compte sera gelé dans ' .
                         date_diff($now, $cycle_end)->format('%a jours') .
-                        ', le <strong>' . AppExtension::date_fr_long($dayAfterEndOfCycle) . '</strong>' .
-                        " Pour annuler, visite <a style=\"text-decoration:underline;color:white;\" href=\"" .
-                        $this->get('router')->generate('fos_user_profile_show')
-                        . "\">ton profil <i class=\"material-icons tiny\">settings</i></a>");
+                        ', le <strong>' . $this->container->get('twig')->getExtension(AppExtension::class)->date_fr_long($dayAfterEndOfCycle) . '</strong>.' .
+                        "<br />Pour annuler, visite " . $profileUrlHtml);
                 }
                 if ($membership->getFrozenChange() && $membership->getFrozen()) {
                     $now = new \DateTime('now');
                     $session->getFlashBag()->add('notice',
                         'Comme demandé, ton compte sera dégelé dans ' .
                         date_diff($now, $cycle_end)->format('%a jours') .
-                        ', le <strong>' . AppExtension::date_fr_long($dayAfterEndOfCycle) . '</strong>' .
-                        " Pour annuler, visite <a style=\"text-decoration:underline;color:white;\" href=\"" .
-                        $this->get('router')->generate('fos_user_profile_show')
-                        . "\">ton profil <i class=\"material-icons tiny\">settings</i></a>");
+                        ', le <strong>' . $this->container->get('twig')->getExtension(AppExtension::class)->date_fr_long($dayAfterEndOfCycle) . '</strong>.' .
+                        "<br />Pour annuler, visite " . $profileUrlHtml);
                 }
 
                 if ($this->get('membership_service')->canRegister($membership)) {
@@ -141,9 +137,8 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/schedule", name="schedule")
+     * @Route("/schedule", name="schedule", methods={"GET","POST"})
      * @Security("is_granted('IS_AUTHENTICATED_REMEMBERED', user)")
-     * @Method({"GET","POST"})
      * @param Request $request
      * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
      */
@@ -217,8 +212,7 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/check", name="check")
-     * @Method({"POST","GET"})
+     * @Route("/check", name="check", methods={"GET","POST"})
      */
     public function checkAction(Request $request)
     {
@@ -267,8 +261,7 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/helloassoNotify", name="helloasso_notify")
-     * @Method({"POST"})
+     * @Route("/helloassoNotify", name="helloasso_notify", methods={"POST"})
      * inspiré de
      * https://github.com/Breizhicoop/HelloDoli/blob/master/adhesion.php
      * https://github.com/Mailforgood/HelloAsso.Api.Doc/blob/master/HelloAsso.Api.Samples/php/helloasso_stat.php
@@ -350,8 +343,7 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/shift/{id}/contact_form", name="shift_contact_form")
-     * @Method({"GET","POST"})
+     * @Route("/shift/{id}/contact_form", name="shift_contact_form", methods={"GET","POST"})
      */
     public function shiftContactFormAction(Shift $shift, Request $request, \Swift_Mailer $mailer)
     {
@@ -418,8 +410,7 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/widget", name="widget")
-     * @Method({"GET"})
+     * @Route("/widget", name="widget", methods={"GET"})
      */
     public function widgetAction(Request $request)
     {

@@ -41,8 +41,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Validator\Constraints\Email as EmailConstraint;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
 use DateTime;
 use Symfony\Component\Validator\Constraints\NotBlank;
@@ -74,20 +73,18 @@ class MembershipController extends Controller
      * Finds and displays a membership entity.
      * Why the '/show' in the route? Because routing conflict if not
      *
-     * @Route("/{member_number}/show", name="member_show")
-     * @Method("GET")
+     * @Route("/{member_number}/show", name="member_show", methods={"GET"})
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
      */
     public function showAction(Membership $member)
     {
-        $session = new Session();
         if ($member->getMemberNumber() <= 0) {
             return $this->redirectToRoute("homepage");
         }
         $this->denyAccessUnlessGranted('view', $member);
 
-        $user = $member->getMainBeneficiary()->getUser(); // FIXME
+        $session = new Session();
 
         $freezeForm = $this->createFreezeForm($member);
         $unfreezeForm = $this->createUnfreezeForm($member);
@@ -123,11 +120,11 @@ class MembershipController extends Controller
             $newReg->setDate(new DateTime('now'));
         }
         $newReg->setRegistrar($this->get('security.token_storage')->getToken()->getUser());
-        if ($this->get('security.authorization_checker')->isGranted('ROLE_ADMIN'))
+        if ($this->get('security.authorization_checker')->isGranted('ROLE_ADMIN')) {
             $action = $this->generateUrl('member_new_registration', array('member_number' => $member->getMemberNumber()));
-        else
+        } else {
             $action = $this->generateUrl('member_new_registration', array('member_number' => $member->getMemberNumber(), 'token' => $member->getTmpToken($session->get('token_key') . $this->getCurrentAppUser()->getUsername())));
-
+        }
 
         $registrationForm = $this->createForm(RegistrationType::class, $newReg, array('action' => $action));
         $registrationForm->add('is_new', HiddenType::class, array('attr' => array('value' => '1')));
@@ -142,17 +139,19 @@ class MembershipController extends Controller
             } else {
                 $detachBeneficiaryForms[$beneficiary->getId()] = array();
             }
-            if ($this->get('security.authorization_checker')->isGranted('ROLE_ADMIN'))
+            if ($this->get('security.authorization_checker')->isGranted('ROLE_ADMIN')) {
                 $deleteBeneficiaryForms[$beneficiary->getId()] = $this->createFormBuilder()
                     ->setAction($this->generateUrl('beneficiary_delete', array('id' => $beneficiary->getId())))
                     ->setMethod('DELETE')->getForm()->createView();
-            else
+            } else {
+                $user = $member->getMainBeneficiary()->getUser(); // FIXME
                 $deleteBeneficiaryForms[$beneficiary->getId()] = $this->createFormBuilder()
                     ->setAction($this->generateUrl('beneficiary_delete', array(
                         'id' => $beneficiary->getId(),
                         'token' => $user->getTmpToken($session->get('token_key') . $this->getCurrentAppUser()->getUsername())
                     )))
                     ->setMethod('DELETE')->getForm()->createView();
+            }
         }
 
         $beneficiaryForm = $this->createNewBeneficiaryForm($member);
@@ -174,6 +173,7 @@ class MembershipController extends Controller
         }
 
         $in_progress_and_upcoming_shifts = $em->getRepository('AppBundle:Shift')->findInProgressAndUpcomingShiftsForMembership($member);
+
         return $this->render('member/show.html.twig', array(
             'member' => $member,
             'note' => $note,
@@ -210,8 +210,7 @@ class MembershipController extends Controller
     /**
      * Add a new registration.
      *
-     * @Route("/newRegistration/{member_number}/", name="member_new_registration")
-     * @Method({"GET", "POST"})
+     * @Route("/newRegistration/{member_number}/", name="member_new_registration", methods={"GET","POST"})
      * @param Request $request
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
@@ -295,8 +294,7 @@ class MembershipController extends Controller
     /**
      * Add a beneficiary from admin to a member
      *
-     * @Route("/newBeneficiary/{member_number}/", name="member_new_beneficiary")
-     * @Method({"GET", "POST"})
+     * @Route("/newBeneficiary/{member_number}/", name="member_new_beneficiary", methods={"GET","POST"})
      * @param Request $request
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\Response
@@ -359,8 +357,7 @@ class MembershipController extends Controller
     /**
      * Displays a form to edit an existing member entity.
      *
-     * @Route("/edit", name="member_edit_firewall")
-     * @Method({"GET", "POST"})
+     * @Route("/edit", name="member_edit_firewall", methods={"GET","POST"})
      * @Security("has_role('ROLE_USER_VIEWER')")
      * @param Request $request
      * @return \Symfony\Component\HttpFoundation\RedirectResponse|Response
@@ -418,8 +415,7 @@ class MembershipController extends Controller
     }
 
     /**
-     * @Route("/{id}/set_email", name="set_email")
-     * @Method({"POST"})
+     * @Route("/{id}/set_email", name="set_email", methods={"POST"})
      * @param Beneficiary $beneficiary
      * @param Request $request
      * @return Response
@@ -504,8 +500,7 @@ class MembershipController extends Controller
     /**
      * Close member
      *
-     * @Route("/{id}/close", name="member_close")
-     * @Method({"POST"})
+     * @Route("/{id}/close", name="member_close", methods={"POST"})
      * @param Request $request
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse
@@ -537,8 +532,7 @@ class MembershipController extends Controller
     /**
      * Open member
      *
-     * @Route("/{id}/open", name="member_open")
-     * @Method({"POST"})
+     * @Route("/{id}/open", name="member_open", methods={"POST"})
      * @param Request $request
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse
@@ -567,8 +561,7 @@ class MembershipController extends Controller
     /**
      * freeze member
      *
-     * @Route("/{id}/freeze", name="member_freeze")
-     * @Method({"POST"})
+     * @Route("/{id}/freeze", name="member_freeze", methods={"POST"})
      * @param Request $request
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse
@@ -598,8 +591,7 @@ class MembershipController extends Controller
     /**
      * Unfreeze member
      *
-     * @Route("/{id}/unfreeze", name="member_unfreeze")
-     * @Method({"POST"})
+     * @Route("/{id}/unfreeze", name="member_unfreeze", methods={"POST"})
      * @param Request $request
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse
@@ -629,8 +621,7 @@ class MembershipController extends Controller
     /**
      * Ask freeze status change for user
      *
-     * @Route("/{id}/freeze_change", name="member_freeze_change")
-     * @Method({"POST"})
+     * @Route("/{id}/freeze_change", name="member_freeze_change", methods={"POST"})
      * @param Request $request
      * @param Membership $member
      * @return \Symfony\Component\HttpFoundation\RedirectResponse
@@ -650,10 +641,18 @@ class MembershipController extends Controller
             $em->persist($member);
             $em->flush();
 
-            if ($member->getFrozenChange()) {
-                $session->getFlashBag()->add('success', 'Le compte sera gelé à la fin du cycle !');
+            if ($member->isFrozen()) {
+                if ($member->getFrozenChange()) {
+                    $session->getFlashBag()->add('success', 'Le compte sera dégelé à la fin du cycle !');
+                } else {
+                    $session->getFlashBag()->add('success', 'La demande de dégel a été annulée !');
+                }
             } else {
-                $session->getFlashBag()->add('success', 'Le compte sera dégelé à la fin du cycle !');
+                if ($member->getFrozenChange()) {
+                    $session->getFlashBag()->add('success', 'Le compte sera gelé à la fin du cycle !');
+                } else {
+                    $session->getFlashBag()->add('success', 'La demande de gel a été annulée !');
+                }
             }
         }
 
@@ -667,8 +666,7 @@ class MembershipController extends Controller
     /**
      * Delete member
      *
-     * @Route("/{id}", name="member_delete")
-     * @Method("DELETE")
+     * @Route("/{id}", name="member_delete", methods={"DELETE"})
      * @Security("has_role('ROLE_SUPER_ADMIN')")
      * @param Request $request
      * @param Membership $member
@@ -695,8 +693,7 @@ class MembershipController extends Controller
     /**
      * Creates a new membership entity
      *
-     * @Route("/new", name="member_new")
-     * @Method({"GET", "POST"})
+     * @Route("/new", name="member_new", methods={"GET","POST"})
      */
     public function newAction(Request $request)
     {
@@ -774,7 +771,6 @@ class MembershipController extends Controller
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-
             $dispatcher = $this->get('event_dispatcher');
 
             if (!$a_beneficiary) {
@@ -819,7 +815,8 @@ class MembershipController extends Controller
             }
 
             return $this->redirectToShow($member);
-        } else if ($form->isSubmitted()) {
+
+        } elseif ($form->isSubmitted()) {
             foreach ($form->getErrors(true) as $key => $error) {
                 $session->getFlashBag()->add('error', 'Erreur ' . ($key + 1) . " : " . $error->getMessage());
             }
@@ -834,8 +831,7 @@ class MembershipController extends Controller
     /**
      * Add a new beneficiary from an anonymous one to an existing membership.
      *
-     * @Route("/add_beneficiary", name="member_add_beneficiary")
-     * @Method({"GET", "POST"})
+     * @Route("/add_beneficiary", name="member_add_beneficiary", methods={"GET","POST"})
      * @param Request $request
      * @return Response
      * @throws
@@ -898,7 +894,6 @@ class MembershipController extends Controller
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-
             $beneficiary = $form->get('beneficiary')->getData();
             $beneficiary->setMembership($member);
 
@@ -915,7 +910,7 @@ class MembershipController extends Controller
             $session->getFlashBag()->add('success', 'Merci ' . $beneficiary->getFirstname() . ' ! Ton adhésion est maintenant finalisée');
             return $this->redirectToRoute('fos_user_registration_check_email');
 
-        } else if ($form->isSubmitted()) {
+        } elseif ($form->isSubmitted()) {
             foreach ($form->getErrors(true) as $key => $error) {
                 $session->getFlashBag()->add('error', 'Erreur ' . ($key + 1) . " : " . $error->getMessage());
             }
@@ -930,8 +925,7 @@ class MembershipController extends Controller
     /**
      * Join two members
      *
-     * @Route("/join", name="member_join")
-     * @Method({"GET","POST"})
+     * @Route("/join", name="member_join", methods={"GET","POST"})
      * @Security("has_role('ROLE_ADMIN')")
      */
     public function joinAction(Request $request)
@@ -981,8 +975,7 @@ class MembershipController extends Controller
     /**
      * Office tools: membership creation & management
      *
-     * @Route("/office_tools", name="user_office_tools")
-     * @Method({"GET","POST"})
+     * @Route("/office_tools", name="user_office_tools", methods={"GET","POST"})
      * @Security("has_role('ROLE_USER_VIEWER')")
      */
     public function officeToolsAction(Request $request)
@@ -1038,8 +1031,7 @@ class MembershipController extends Controller
     /**
      * Export all emails of members (including beneficiary)
      *
-     * @Route("/emails_csv", name="admin_emails_csv")
-     * @Method({"GET"})
+     * @Route("/emails_csv", name="admin_emails_csv", methods={"GET"})
      * @Security("has_role('ROLE_SUPER_ADMIN')")
      */
     public function exportEmails(Request $request)
@@ -1065,6 +1057,21 @@ class MembershipController extends Controller
             'Content-Encoding: UTF-8',
             'Content-Type' => 'application/force-download; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="emails_' . date('dmyhis') . '.csv"'
+        ));
+    }
+
+    /**
+     * @return Response
+     */
+    public function homepageFreezeAction(): Response
+    {
+        $member = $this->getUser()->getBeneficiary()->getMembership();
+
+        $freezeChangeForm = $this->createFreezeChangeForm($member);
+
+        return $this->render('member/_partial/frozen.html.twig', array(
+            'member' => $member,
+            'freeze_change_form' => $freezeChangeForm->createView(),
         ));
     }
 

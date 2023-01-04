@@ -63,9 +63,15 @@ twig:
     code_generation_enabled: '%code_generation_enabled%'
     local_currency_name: '%local_currency_name%'
     use_fly_and_fixed: '%use_fly_and_fixed%'
+    max_event_proxy_per_member: '%max_event_proxy_per_member%'
     display_gauge: '%display_gauge%'
     profile_display_task_list: '%profile_display_task_list%'
     profile_display_time_log: '%profile_display_time_log%'
+    # member
+    member_withdrawn_background_color: '%member_withdrawn_background_color%'
+    member_frozen_background_color: '%member_frozen_background_color%'
+    member_exempted_background_color: '%member_exempted_background_color%'
+    # swipe card
     display_swipe_cards_settings: '%display_swipe_cards_settings%'
     display_freeze_account: '%display_freeze_account%'
     display_freeze_account_false_message: '%display_freeze_account_false_message%'
@@ -128,6 +134,10 @@ doctrine_migrations:
   name: Application Migrations
   column_length: 191
   organize_migrations: false # Version >=1.2 Possible values are: "BY_YEAR", "BY_YEAR_AND_MONTH", false
+
+sensio_framework_extra:
+  router:
+    annotations: false
 
 # Swiftmailer Configuration
 swiftmailer:

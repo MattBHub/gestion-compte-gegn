@@ -122,21 +122,6 @@ parameters:
     swipe_card_logging: true
     swipe_card_logging_anonymous: true
     display_swipe_cards_settings: true
-    time_after_which_members_are_late_with_shifts: -9
-    reserve_new_shift_to_prior_shifter: true
-    forbid_shift_overlap_time: 30
-    display_name_shifters: false
-    use_card_reader_to_validate_shifts: false
-    max_time_at_end_of_shift: 0
-
-    # Profile configuration
-    profile_display_task_list: true
-    profile_display_time_log: true
-
-    # Swipe card configuration
-    swipe_card_logging: true
-    swipe_card_logging_anonymous: true
-    display_swipe_cards_settings: true
 
     # Default formations
     default_formation_ids: []

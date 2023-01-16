@@ -1,7 +1,10 @@
 <span class="card-title">{{ shift.start | date_fr_long }} de {{ shift.start | date('H:i') }} à {{ shift.end | date('H:i') }}</span>
 <p>
-    <i class="material-icons">person</i>{{ shift.shifter.firstname }}
-    <br />
+    <i class="material-icons">person</i>
+         {% if shift.shifter is not null %}
+             {{ shift.shifter.firstname }}
+        {% endif %}
+    <br>
     <b class="{{ shift.job.color }}-text">{{ shift.job.name }}</b>
     {% if use_fly_and_fixed %}
         <br />

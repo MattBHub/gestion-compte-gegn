@@ -94,7 +94,7 @@
         {% endif %}
     {% endif %}
 
-    <a href="{{ path("booking") }}" class="btn teal hide-on-small-only" title="Je réserve un créneau" {% if beneficiariesWhoCanBook | length == 0 %}disabled{% endif %}>
+    <a href="{{ path("booking") }}" class="waves-effect waves-light btn teal darken-1" style="min-width: 240px" title="Je réserve un créneau" {% if beneficiariesWhoCanBook | length == 0 %}disabled{% endif %}>
         <i class="material-icons left">schedule</i>
         Je réserve un créneau
     </a>

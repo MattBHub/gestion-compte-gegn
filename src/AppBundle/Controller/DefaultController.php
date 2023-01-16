@@ -145,7 +145,7 @@ class DefaultController extends Controller
     public function scheduleAction()
     {
         return $this->render('booking/schedule.html.twig', [
-            'bucketsByDay' => $this->getSchedule(-1),
+            'bucketsByDay' => $this->getSchedule(-1, 28),
             'hours' => $this->getHours()
         ]);
     }

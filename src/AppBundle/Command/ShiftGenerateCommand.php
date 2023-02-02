@@ -2,6 +2,8 @@
 // src/AppBundle/Command/ShiftGenerateCommand.php
 namespace AppBundle\Command;
 
+use AppBundle\Entity\Period;
+use AppBundle\Entity\PeriodPosition;
 use AppBundle\Entity\Shift;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputArgument;
@@ -73,6 +75,7 @@ class ShiftGenerateCommand extends ContainerAwareCommand
 
             echo "\nCréation du : ". $from->format("d-m-Y H:i"). " au : ". $to->format("d-m-Y H:i");
 
+            /** @var Period $period */
             foreach ($periods as $period) {
 
                 $shift = new Shift();
@@ -86,6 +89,7 @@ class ShiftGenerateCommand extends ContainerAwareCommand
 
                 echo "\n Copie du créneau du : ". $lastStart->format("d-m-Y") . " de " .$lastStart->format("H:i")." à : ". $lastEnd->format("H:i");
 
+                /** @var PeriodPosition $position */
                 foreach ($period->getPositions() as $position) {
 
                     echo "\n  Poste : ". $position->getFormation();
@@ -108,19 +112,26 @@ class ShiftGenerateCommand extends ContainerAwareCommand
                         $current_shift->setBookedTime(null);
                         $current_shift->setBooker(null);
 
-                        // si c'est un créneau fixe
-                        if ($use_fly_and_fixed && $position->getShifter() != null &&
+                        // si c'est un créneau fixe (parametré par les gestionnaires)
+                        // il est automatiquement assigné au shifter et rien ne lui est demandé
+                        if ($use_fly_and_fixed
+                            && $position->getShifter() != null &&
                             !$position->getShifter()->getMembership()->isExemptedFromShifts($current_shift->getStart())) {
                             $current_shift->setFixe(True);
                             $current_shift->setShifter($position->getShifter());
                             $current_shift->setBookedTime(new \DateTime('now'));
                             $current_shift->setBooker($admin);
-                        } else if ($last_cycle_shift &&
+                        }
+                        // on demande à celui qui a fait le shift en fixe s'il veut le reprendre
+                        else if (
+                            $last_cycle_shift &&
+                            $last_cycle_shift->isFixe() &&
                             $last_cycle_shift->getShifter() &&
                             $this->getContainer()->getParameter('reserve_new_shift_to_prior_shifter')) {
                             $current_shift->setLastShifter($last_cycle_shift->getShifter());
                             $reservedShifts[$count] = $current_shift;
                             $formerShifts[$count] = $last_cycle_shift;
+                            $current_shift->setFixe(true);
                         }
 
                         $em->persist($current_shift);

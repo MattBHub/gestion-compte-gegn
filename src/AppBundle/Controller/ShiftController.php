@@ -15,6 +15,7 @@ use AppBundle\Form\RadioChoiceType;
 use AppBundle\Form\ShiftType;
 use AppBundle\Security\MembershipVoter;
 use AppBundle\Security\ShiftVoter;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -452,6 +453,7 @@ class ShiftController extends Controller
      * Accept a reserved shift
      *
      * @Route("/{id}/accept", name="shift_accept_reserved", methods={"GET"})
+     * @IsGranted("IS_AUTHENTICATED_FULLY")
      */
     public function acceptReservedShiftAction(Request $request, Shift $shift)
     {

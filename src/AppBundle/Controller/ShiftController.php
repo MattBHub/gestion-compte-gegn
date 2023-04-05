@@ -453,7 +453,6 @@ class ShiftController extends Controller
      * Accept a reserved shift
      *
      * @Route("/{id}/accept", name="shift_accept_reserved", methods={"GET"})
-     * @IsGranted("IS_AUTHENTICATED_FULLY")
      */
     public function acceptReservedShiftAction(Request $request, Shift $shift)
     {
@@ -466,10 +465,8 @@ class ShiftController extends Controller
 
         if ($shift->getId()) {
             if ($shift->getLastShifter()) {
-                $current_user = $this->get('security.token_storage')->getToken()->getUser();
-                $shift->setBooker($current_user);
-                $beneficiary = $shift->getLastShifter();
-                $shift->setShifter($beneficiary);
+                $shift->setBooker($shift->getLastShifter()->getUser());
+                $shift->setShifter($shift->getLastShifter());
                 $shift->setBookedTime(new DateTime('now'));
                 $shift->setLastShifter(null);
 //                $shift->setFixe(false);

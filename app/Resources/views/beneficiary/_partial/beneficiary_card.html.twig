@@ -7,16 +7,16 @@
             <div class="card-action">
                 {% if isTemporaryEmail(beneficiary.user.email) %}
                     <p>{{ beneficiary.firstname }} n'a pas renseigné son email, son compte ne peux pas être activé.</p>
-                {% else %}
-                    <form action="{{ path('fos_user_resetting_send_email') }}" method="POST" class="fos_user_resetting_request">
-                        <input type="hidden" name="username" value="{{ beneficiary.user.username }}" />
-                        Envoyer le lien de connexion sur {{ beneficiary.user.email }} ?
-                        <br />
-                        <button type="submit" name="submit" class="btn waves-effect waves-light light-green">
-                            <i class="material-icons left">devices</i> Activer le compte de {{ beneficiary.firstname }}
-                        </button>
-                    </form>
-                    <br />
+{#                {% else %}#}
+{#                    <form action="{{ path('fos_user_resetting_send_email') }}" method="POST" class="fos_user_resetting_request">#}
+{#                        <input type="hidden" name="username" value="{{ beneficiary.user.username }}" />#}
+{#                        Envoyer le lien de connexion sur {{ beneficiary.user.email }} ?#}
+{#                        <br />#}
+{#                        <button type="submit" name="submit" class="btn waves-effect waves-light light-green">#}
+{#                            <i class="material-icons left">devices</i> Activer le compte de {{ beneficiary.firstname }}#}
+{#                        </button>#}
+{#                    </form>#}
+{#                    <br />#}
                 {% endif %}
             </div>
         {% endif %}

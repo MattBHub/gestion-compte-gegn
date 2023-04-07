@@ -1,5 +1,7 @@
-Bonjour {{ user.firstname }},<br>
+Bonjour {{ user.username }},<br>
 
 {{ dynamicContent | markdown | raw }}
 
-Pour valider ton compte membre, merci de cliquer sur <a href="{{ login_url }}">{{ login_url }}</a>
+Ton nom d'utilisateur est : <b>{{ user.username }}</b><br>
+
+Pour valider ton compte, merci de cliquer sur <a href="{{ login_url }}">{{ login_url }}</a>

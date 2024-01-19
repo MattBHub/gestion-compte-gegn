@@ -520,7 +520,7 @@ class Shift
      */
     public function getIsUpcoming()
     {
-        return $this->isBefore('2 days');
+        return $this->isBefore('5 days');
     }
 
     /**

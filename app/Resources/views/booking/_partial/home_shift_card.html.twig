@@ -31,31 +31,27 @@
             {{ form_widget(shift_undismiss_form) }}
             {{ form_end(shift_undismiss_form) }}
         {% else %}
-            {% if not shift.fixe or shift.isUpcoming %}
-                <div class="card-action">
-                    {% if not shift.fixe %}
-                        <a href="#dismiss{{ shift.id }}" class="modal-trigger btn-flat red white-text" title="Annuler">Annuler</a>
-                    {% endif %}
-                    {% if shift.isUpcoming %}
-                        <a href="#contact{{ shift.id }}" class="modal-trigger btn-flat" title="Contacter les bénévoles du créneau"><i class="material-icons">email</i></a>
-                    {% endif %}
-                </div>
-                <div id="dismiss{{ shift.id }}" class="modal black-text">
-                    <form action="{{ path('shift_dismiss', { 'id': shift.id }) }}" method="POST">
-                        <div class="modal-content">
-                            <h5>Je ne peux pas faire mon créneau</h5>
-                            <div class="input-field">
-                                <textarea id="reason" name="reason" class="materialize-textarea"></textarea>
-                                <label for="reason">Justification éventuelle</label>
-                            </div>
+            <div class="card-action">
+                    <a href="#dismiss{{ shift.id }}" class="modal-trigger btn-flat red white-text" title="Annuler">Annuler</a>
+                {% if shift.isUpcoming %}
+                    <a href="#contact{{ shift.id }}" class="modal-trigger btn-flat" title="Contacter les bénévoles du créneau"><i class="material-icons">email</i></a>
+                {% endif %}
+            </div>
+            <div id="dismiss{{ shift.id }}" class="modal black-text">
+                <form action="{{ path('shift_dismiss', { 'id': shift.id }) }}" method="POST">
+                    <div class="modal-content">
+                        <h5>Je ne peux pas faire mon créneau</h5>
+                        <div class="input-field">
+                            <textarea id="reason" name="reason" class="materialize-textarea"></textarea>
+                            <label for="reason">Justification éventuelle</label>
                         </div>
-                        <div class="modal-footer">
-                            <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat grey-text">Retour à la raison</a>
-                            <button class="modal-action modal-close waves-effect waves-green btn red">Oui, je me désiste !</button>
-                        </div>
-                    </form>
-                </div>
-            {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat grey-text">Retour à la raison</a>
+                        <button class="modal-action modal-close waves-effect waves-green btn red">Oui, je me désiste !</button>
+                    </div>
+                </form>
+            </div>
         {% endif %}
     {% endif %}
 </div>

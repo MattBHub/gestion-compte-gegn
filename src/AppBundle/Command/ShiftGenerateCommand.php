@@ -122,16 +122,17 @@ class ShiftGenerateCommand extends ContainerAwareCommand
                             $current_shift->setBookedTime(new \DateTime('now'));
                             $current_shift->setBooker($admin);
                         }
-                        // on demande à celui qui a fait le shift en fixe s'il veut le reprendre
+                        // on attribut le shift directement
                         else if (
                             $last_cycle_shift &&
                             $last_cycle_shift->isFixe() &&
                             $last_cycle_shift->getShifter() &&
                             $this->getContainer()->getParameter('reserve_new_shift_to_prior_shifter')) {
-                            $current_shift->setLastShifter($last_cycle_shift->getShifter());
+                            $current_shift->setShifter($last_cycle_shift->getShifter());
+                            $current_shift->setBookedTime(new \DateTime('now'));
+                            $current_shift->setFixe(true);
                             $reservedShifts[$count] = $current_shift;
                             $formerShifts[$count] = $last_cycle_shift;
-                            $current_shift->setFixe(true);
                         }
 
                         $em->persist($current_shift);
@@ -146,9 +147,9 @@ class ShiftGenerateCommand extends ContainerAwareCommand
         $shiftEmail = $this->getContainer()->getParameter('emails.shift');
         foreach ($reservedShifts as $i => $shift){
             $d = (date_diff(new \DateTime('now'),$shift->getStart())->format("%d"));
-            $mail = (new \Swift_Message('[ESPACE MEMBRES] Reprends ton créneau du '. $formerShifts[$i]->getStart()->format("d F") .' dans '.$d.' jours'))
+            $mail = (new \Swift_Message('[ESPACE MEMBRES] Reprise automatique de ton créneau du '. $formerShifts[$i]->getStart()->format("d/m") .' dans '.$d.' jours'))
                 ->setFrom($shiftEmail['address'], $shiftEmail['from_name'])
-                ->setTo($shift->getLastShifter()->getEmail())
+                ->setTo($shift->getShifter()->getEmail())
                 ->setBody(
                     $this->getContainer()->get('twig')->render(
                         'emails/shift_reserved.html.twig',
@@ -156,8 +157,8 @@ class ShiftGenerateCommand extends ContainerAwareCommand
                             'shift' => $shift,
                             'oldshift' => $formerShifts[$i],
                             'days' => $d,
-                            'accept_url' => $router->generate('shift_accept_reserved', array('id' => $shift->getId(),'token'=> $shift->getTmpToken($shift->getlastShifter()->getId())),UrlGeneratorInterface::ABSOLUTE_URL),
-                            'reject_url' => $router->generate('shift_reject_reserved', array('id' => $shift->getId(),'token'=> $shift->getTmpToken($shift->getlastShifter()->getId())),UrlGeneratorInterface::ABSOLUTE_URL),
+//                            'accept_url' => $router->generate('shift_accept_reserved', array('id' => $shift->getId(),'token'=> $shift->getTmpToken($shift->getshifter()->getId())),UrlGeneratorInterface::ABSOLUTE_URL),
+//                            'reject_url' => $router->generate('shift_reject_reserved', array('id' => $shift->getId(),'token'=> $shift->getTmpToken($shift->getshifter()->getId())),UrlGeneratorInterface::ABSOLUTE_URL),
                         )
                     ),
                     'text/html'

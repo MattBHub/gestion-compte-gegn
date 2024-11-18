@@ -359,7 +359,7 @@ class DefaultController extends Controller
         $formBuilder->add('message', TextareaType::class, [
             'attr' => ['class' => 'materialize-textarea'],
             'label' => 'Message',
-            'data' => 'Bonjour XX,'.PHP_EOL."Tu n'es toujours pas arrivé pour notre créneau.".PHP_EOL."Est-ce que tout va bien ?".PHP_EOL."A très vite,".PHP_EOL.$shift->getShifter()->getFirstName().PHP_EOL.PHP_EOL."Bonjour à tou.te.s,".PHP_EOL."Je vais en être en retard pour mon créneau.".PHP_EOL."Je serai à l'épicerie d'ici XX minutes.".PHP_EOL."A tout de suite,".PHP_EOL.$shift->getShifter()->getFirstName()
+            'data' => ''
         ]);
         $formBuilder->setAction($this->generateUrl('shift_contact_form', array('id' => $shift->getId())));
         $formBuilder->setMethod('POST');
@@ -369,7 +369,8 @@ class DefaultController extends Controller
             $beneficiaries = $form->get('to')->getData();
             $from = $form->get('from')->getData();
             $from = $em->getRepository('AppBundle:Beneficiary')->findOneBy(array('id' => $from));
-            $emails = array();
+            // shift group always in the recipient list
+            $emails = $this->getParameter('emails.shift')['address'];
             $firstnames = array();
             foreach ($beneficiaries as $beneficiary) {
                 $emails[] = $beneficiary->getEmail();

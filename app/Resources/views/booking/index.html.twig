@@ -169,39 +169,20 @@
 
         });
 
-        function cancelAll() {
-            let checkboxes = document.getElementsByTagName('input');
+        function postSelectedId(beneficiaryId, shiftId, typeService) {
 
-            for (let i = 0; i < checkboxes.length; i++) {
-                if (checkboxes[i].type === 'radio') {
-                    checkboxes[i].checked = false;
-                }
-            }
-        }
-
-        function postSelectedId(beneficiaryId) {
-
-            let selectedFormation = document.querySelector('.checkedFormation:checked');
-            {% if use_fly_and_fixed %}
-            let selectedTypeService = document.querySelector('.checkedTypeService:checked');
-            {% else %}
-            let selectedTypeService = document.querySelector('input[name="typeService"]');
-            {% endif %}
-
-            if (selectedFormation !== null && selectedTypeService !== null) {
-
-                // let url = "/shift/" + checkedValue + "/book";
+            if (beneficiaryId !== null && shiftId !== null && typeService !== null) {
 
                 let url = "{{ path('shift_book', { 'id': 'tmpId' }) }}";
-                url = url.replace("tmpId", selectedFormation.value);
+                url = url.replace("tmpId", shiftId);
 
                 let body = {
-                    "typeService": selectedTypeService.value,
+                    "typeService": typeService,
                     "beneficiaryId": beneficiaryId,
                 };
 
                 // If using old IE version
-                var xhttp = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP");
+                let xhttp = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP");
 
                 xhttp.open("POST", url, true);
                 xhttp.onreadystatechange = function () {

@@ -3,7 +3,7 @@
 {% set availableShifts = shift_service.bookableShifts(bucket, beneficiary) %}
 {% set firstBookable = shift_service.firstBookable(bucket, beneficiary) %}
 <div id="book{{ firstBookable.id }}" class="modal">
-    <div class="modal-content">
+    <form class="modal-content">
         <h5>Réserver ce créneau / <span class="{{ firstBookable.job.color }}-text">{{ firstBookable.job.name }}</span></h5>
         <h6>{{ bucket.start|date_fr_long }} de {{ bucket.start|date('G\\hi') }} à {{ bucket.end|date('G\\hi') }}</h6>
 
@@ -66,8 +66,8 @@
             <p>Nombre de places restantes : {{ nbBookableShifts }}/{{ nbShifts }}</p>
             {% for availableShift in availableShifts %}
                 <div>
-                    <label for="{{ availableShift.id }}" style="color: #5f5a5a; font-weight: 600;">
-                        <input type="radio" id="{{ availableShift.id }}" class="checkedFormation" name="formation" value="{{ availableShift.id }}" />
+                    <label for="{{ availableShift.id }}-{{ firstBookable.id }}" style="color: #5f5a5a; font-weight: 600;">
+                        <input type="radio" id="{{ availableShift.id }}-{{ firstBookable.id }}" class="checkedFormation" name="formation" value="{{ availableShift.id }}" />
                         {% if availableShift.formation %}
                             <span>{{ availableShift.formation.name }}</span>
                         {% else %}
@@ -79,19 +79,17 @@
             {% if use_fly_and_fixed %}
                 <p>Ce créneau sera fait en tant que :</p>
                 <div>
-                    <label for="volant{{ firstBookable.id }}" style="color: #5f5a5a; font-weight: 600;">
-                        <input type="radio" id="volant{{ firstBookable.id }}" class="checkedTypeService" name="typeService" value=0 />
+                    <label for="volant-{{ firstBookable.id }}" style="color: #5f5a5a; font-weight: 600;">
+                        <input type="radio" id="volant-{{ firstBookable.id }}" class="checkedTypeService" name="typeService" value=0 />
                         <span>volant (une seule fois)</span>
                     </label>
                 </div>
                 <div>
-                    <label for="fixe{{ firstBookable.id }}" style="color: #5f5a5a; font-weight: 600;">
-                        <input type="radio" id="fixe{{ firstBookable.id }}" class="checkedTypeService" name="typeService" value=1 />
+                    <label for="fixe-{{ firstBookable.id }}" style="color: #5f5a5a; font-weight: 600;">
+                        <input type="radio" id="fixe-{{ firstBookable.id }}" class="checkedTypeService" name="typeService" value=1 />
                         <span>fixe (reporté à chaque cycle)</span>
                     </label>
                 </div>
-            {% else %}
-                <input type="hidden" name="typeService" value=0 />
             {% endif %}
             <div class="" style="position: fixed;top:0;width: 100%;left: 0;">
                 {% if nbBookableShifts < nbShifts %}
@@ -106,12 +104,40 @@
                 Pour pouvoir annuler, votre créneau devra trouver repreneur.
             </p>
         {% endif %}
-    </div>
+    </form>
     <div class="modal-footer">
-        <a href="#!"
-           class="modal-action modal-close waves-effect waves-green btn-flat red-text" onclick="cancelAll()">Annuler</a>
+        <a href="#"
+           class="modal-action modal-close waves-effect waves-green btn-flat red-text">
+            Annuler
+        </a>
         {% if beneficiary.membership.beneficiaries | length >= 1 %}
-            <button id="confirmButton" onclick="postSelectedId({{ beneficiary.id }})" class="waves-effect waves-green btn teal">Confirmer</button>
+            <button id="confirmButton{{ firstBookable.id }}" class="waves-effect waves-green btn teal">Confirmer
+            </button>
         {% endif %}
     </div>
 </div>
+
+{% block javascripts %}
+    <script>
+        document.getElementById('confirmButton'+{{ firstBookable.id }}).onclick = function (e) {
+            let selectedFormationService = document.querySelector("[id$='{{ firstBookable.id }}'][class*=checkedFormation]:checked");
+
+            let typeService;
+            {% if use_fly_and_fixed %}
+                let selectedTypeService = document.querySelector("[id$='{{ firstBookable.id }}'][class*=checkedTypeService]:checked");
+                if (selectedTypeService !== null)
+                    typeService = selectedTypeService.value;
+            {% else %}
+                typeService = 0;
+            {% endif %}
+
+            if (typeof typeService !== "undefined" && selectedFormationService != null) {
+                e.currentTarget.classList.add("disabled");
+                postSelectedId({{ beneficiary.id }}, selectedFormationService.value, typeService);
+            } else {
+                alert("Merci de cocher un Poste et un Type de service");
+            }
+        };
+
+    </script>
+{% endblock %}

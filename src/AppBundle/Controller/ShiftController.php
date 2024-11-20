@@ -389,16 +389,17 @@ class ShiftController extends Controller
             return $this->redirectToRoute("booking");
         }
 
-        if($shift->isFixe()) {
-            $session->getFlashBag()->add("error", "Impossible d'annuler un créneau fixe");
-            return $this->redirectToRoute("booking");
-        } else {
-            // Store beneficiary entity before removing it
-            $beneficiary = $shift->getShifter();
-            $shift->setShifter(null);
-            $shift->setBooker(null);
-            $shift->setFixe(false);
-        }
+//        if($shift->isFixe()) {
+//            $session->getFlashBag()->add("error", "Impossible d'annuler un créneau fixe");
+//            return $this->redirectToRoute("booking");
+//        }
+
+        // Store beneficiary entity before removing it
+        $beneficiary = $shift->getShifter();
+        $shift->setShifter(null);
+        $shift->setBooker(null);
+        $shift->setFixe(false);
+
         $em->persist($shift);
         $em->flush();
 

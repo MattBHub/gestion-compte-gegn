@@ -4,17 +4,18 @@ namespace AppBundle\Command;
 
 use AppBundle\Entity\Membership;
 use AppBundle\Entity\Shift;
+use AppBundle\Entity\TimeLog;
 use Doctrine\ORM\EntityManager;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class FixTimeLogCommand extends ContainerAwareCommand
+class FixTimeLogOldCommand extends ContainerAwareCommand
 {
     protected function configure()
     {
         $this
-            ->setName('app:user:fix_time_log')
+            ->setName('app:user:fix_time_log_old')
             ->setDescription('Fix time logs data')
             ->setHelp('This command allows you to fix time logs data');
     }
@@ -25,44 +26,38 @@ class FixTimeLogCommand extends ContainerAwareCommand
         $em = $this->getContainer()->get('doctrine')->getManager();
         $members = $em->getRepository('AppBundle:Membership')->findAll();
 
-        $membersName=[];
-        /** @var Membership $member */
         foreach ($members as $member) {
             if ($member->getFirstShiftDate()) {
                 $previous_cycle_start = $this->getContainer()->get('membership_service')->getStartOfCycle($member, -1);
                 $current_cycle_end = $this->getContainer()->get('membership_service')->getEndOfCycle($member, 0);
                 $shifts = $em->getRepository('AppBundle:Shift')->findShiftsForMembership($member, $previous_cycle_start, $current_cycle_end, true);
 
-                $beneficiary = $member->getMainBeneficiary();
-                /** @var Shift $shift */
                 foreach ($shifts as $shift) {
                     $logs = $member->getTimeLogs()->filter(function ($log) use ($shift) {
                         return ($log->getShift() && $log->getShift()->getId() == $shift->getId());
                     });
-
                     // Insert log if it doesn't exist fot this shift
                     if ($logs->count() == 0) {
                         $this->createShiftLog($em, $shift, $member);
-                        if (array_key_exists($member->getId(), $membersName)) {
-                            $membersName[$member->getId()]["count"] = $membersName[$member->getId()]["count"]+1;
-                        } else {
-                            $membersName[$member->getId()]["name"] = $beneficiary->getDisplayName();
-                            $membersName[$member->getId()]["count"] = 1;
-                        }
                         $countShiftLogs++;
                     }
                 }
             }
         }
+        $em->flush();
         $output->writeln($countShiftLogs . ' logs de créneaux réalisés créés');
-        foreach ($membersName as $m) {
-            $output->writeln($m['name'] .": ". $m["count"]);
-        }
     }
 
-    private function createShiftLog(EntityManager $em, Shift $shift, Membership $membership) {
-        $statement = "INSERT INTO time_log (membership_id, shift_id, created_at, `time`, description, `type`) VALUES(" . $membership->getId() . ", " . $shift->getId() . ", '". date_format($shift->getStart(), "Y-m-d h:i") ."', " . $shift->getDuration() . ", 'Créneau réalisé', 1)";
-        $c = $em->getConnection();
-        $c->executeStatement($statement);
+    private function createShiftLog(EntityManager $em, Shift $shift, Membership $membership)
+    {
+        $log = new TimeLog();
+        $log->setMembership($membership);
+        $log->setTime($shift->getDuration());
+        $log->setShift($shift);
+        $log->setCreatedAt($shift->getStart());
+        $log->setType(1);
+        $log->setDescription("Créneau réalisé");
+        $em->persist($log);
     }
+
 }

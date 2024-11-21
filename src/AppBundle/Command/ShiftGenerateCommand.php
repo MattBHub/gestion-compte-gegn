@@ -2,15 +2,17 @@
 // src/AppBundle/Command/ShiftGenerateCommand.php
 namespace AppBundle\Command;
 
+use AppBundle\Entity\Membership;
 use AppBundle\Entity\Period;
 use AppBundle\Entity\PeriodPosition;
 use AppBundle\Entity\Shift;
+use AppBundle\Entity\TimeLog;
+use Doctrine\ORM\EntityManager;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class ShiftGenerateCommand extends ContainerAwareCommand
 {
@@ -136,6 +138,12 @@ class ShiftGenerateCommand extends ContainerAwareCommand
                         }
 
                         $em->persist($current_shift);
+
+                        // puisqu'il est assigné, il faut mettre le log tout de suite
+                        if ($current_shift->isFixe()){
+                            $this->createShiftLog($em, $current_shift, $current_shift->getShifter()->getMembership());
+                        }
+
                         $count++;
                     } else {
                         $count2++;
@@ -177,5 +185,15 @@ class ShiftGenerateCommand extends ContainerAwareCommand
         $lastCycleDate = clone($date);
         $lastCycleDate->modify("-28 days");
         return $lastCycleDate;
+    }
+
+    private function createShiftLog(EntityManager $em, Shift $shift, Membership $membership) {
+        $log = new TimeLog();
+        $log->setMembership($membership);
+        $log->setTime($shift->getDuration());
+        $log->setShift($shift);
+        $log->setCreatedAt($shift->getStart());
+        $log->setType(1);
+        $em->persist($log);
     }
 }

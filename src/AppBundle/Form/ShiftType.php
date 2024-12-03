@@ -69,7 +69,7 @@ class ShiftType extends AbstractType
                     'required' => false
                 ))
                 ->add('number', IntegerType::class, [
-                    'label' => 'Nombre de postes disponibles',
+                    'label' => 'Nb poste',
                     'required' => true,
                     'mapped' => false,
                     'data' => 1,

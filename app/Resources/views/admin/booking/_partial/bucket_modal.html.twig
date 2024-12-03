@@ -164,6 +164,15 @@ It use the materialize modal class https://materializecss.com/modals.html
     <i class="material-icons left">delete</i>Supprimer
 </button>
 {{ form_end(bucket_delete_form) }}
+
+<style>
+    /* Formation select - maximum height and overflow property for the scroll bar */
+    .dropdown-content.select-dropdown {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+</style>
+
 <script>
     function makeAjaxCall(event) {
         if (event.data.confirmation) {

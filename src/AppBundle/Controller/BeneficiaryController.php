@@ -3,8 +3,11 @@
 namespace AppBundle\Controller;
 
 use AppBundle\Entity\Beneficiary;
+use AppBundle\Entity\Formation;
 use AppBundle\Entity\Membership;
 use AppBundle\Form\BeneficiaryType;
+use Doctrine\ORM\EntityManager;
+use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Form;
@@ -25,6 +28,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 class BeneficiaryController extends Controller
 {
     private $_current_app_user;
+    private const TIM_ET_BASTIEN = 31;
 
     /**
      * Returns a user current representation.
@@ -57,6 +61,8 @@ class BeneficiaryController extends Controller
 
         if ($editForm->isSubmitted() && $editForm->isValid()) {
             $em = $this->getDoctrine()->getManager();
+
+            $this->addFormationTimEtBastien($em, $beneficiary);
 
             $em->flush();
             $session->getFlashBag()->add('success', 'Mise à jour effectuée');
@@ -276,5 +282,33 @@ class BeneficiaryController extends Controller
             return $this->redirectToRoute('member_show', array('member_number' => $member->getMemberNumber()));
         else
             return $this->redirectToRoute('member_show', array('member_number' => $member->getMemberNumber(), 'token' => $user->getTmpToken($session->get('token_key') . $this->getCurrentAppUser()->getUsername())));
+    }
+
+    /**
+     * Ajoute la formation 'Tim&Bastien (en formation)' si possède la formation 'Caisse'
+     * @param ObjectManager $em
+     * @param Beneficiary $beneficiary
+     */
+    private function addFormationTimEtBastien(ObjectManager $em, Beneficiary $beneficiary) {
+
+        // Si l'utilisateur possède déjà la formation 'Tim & Bastien (en formation)'
+        foreach ($beneficiary->getFormations()->getValues() as $formation) {
+            if ($formation->getId() == self::TIM_ET_BASTIEN)
+                return;
+        }
+
+        // Récupèration de la formation
+        $timBastien = $em->getRepository(Formation::class)->find(self::TIM_ET_BASTIEN);
+
+        if (!$timBastien instanceof Formation)
+            return;
+
+        // Attribution automatique si formation Caisse
+        foreach ($beneficiary->getFormations()->getValues() as $formation) {
+            if (strtolower($formation->getName()) === 'caisse') {
+                $beneficiary->addFormation($timBastien);
+                break;
+            }
+        }
     }
 }

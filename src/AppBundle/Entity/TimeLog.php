@@ -258,7 +258,13 @@ class TimeLog
             case self::TYPE_SHIFT:
                 if ($this->shift) {
                     setlocale(LC_TIME, 'fr_FR.UTF8');
-                    return "Créneau " . $this->shift->getJob()->getName() . strftime(" du %d/%m/%y de %R", $this->shift->getStart()->getTimestamp()) . ' à ' . strftime("%R", $this->shift->getEnd()->getTimestamp()) . ' [' . $this->shift->getShifter() . ']';
+                    $creneau = $this->shift->getJob()->getName();
+                    $poste = $this->shift->getFormation() ?: "";
+                    $from = strftime("%d/%m/%y de %R", $this->shift->getStart()->getTimestamp());
+                    $to = strftime("%R", $this->shift->getEnd()->getTimestamp());
+//                    $for = "[' . $this->shift->getShifter() . ']";
+                    $for = "";
+                    return "Créneau <strong> $creneau </strong> [$poste] du $from à $to $for";
                 } else {
                     return "Créneau (non renseigné)";
                 }
